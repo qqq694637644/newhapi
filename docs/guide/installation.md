@@ -70,6 +70,11 @@ bun build:single-exe
 
 ## Server setup
 
+The server can be deployed on:
+
+- **Local desktop** (default) - Run on your development machine
+- **Remote server** - Deploy on a VPS, cloud server, or any machine with network access
+
 Start the server:
 
 ```bash
@@ -142,15 +147,22 @@ Each machine gets a unique ID stored in `~/.hapi/settings.json`. This allows:
 
 ### Remote access
 
-Cloudflare Tunnel (recommended):
+If the server is deployed on a machine with a **public IP**, you can access it directly via `http://your-server-ip:3006`. Use HTTPS (via reverse proxy like Nginx or Caddy) for production.
+
+If the server is behind NAT, use one of these options:
+
+<details>
+<summary>Cloudflare Tunnel (recommended for NAT)</summary>
 
 https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/
 
 ```bash
 export WEBAPP_URL="https://your-tunnel.trycloudflare.com"
 ```
+</details>
 
-Tailscale:
+<details>
+<summary>Tailscale</summary>
 
 https://tailscale.com/download
 
@@ -163,12 +175,15 @@ Access via your Tailscale IP:
 ```
 http://100.x.x.x:3006
 ```
+</details>
 
-ngrok:
+<details>
+<summary>ngrok</summary>
 
 ```bash
 ngrok http 3006
 ```
+</details>
 
 ### Telegram setup
 

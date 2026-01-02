@@ -93,7 +93,7 @@
     "title": "How it Works",
     "step1": {
       "title": "1. Start on Desktop",
-      "desc": "Launch HAPI on your local machine. It creates a secure tunnel and keeps your session alive."
+      "desc": "Launch HAPI on your machine. It keeps your session alive and ready for remote access."
     },
     "step2": {
       "title": "2. Connect Mobile",

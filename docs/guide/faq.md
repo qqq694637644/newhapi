@@ -33,7 +33,9 @@ For local network access:
 http://<your-computer-ip>:3006
 ```
 
-For internet access, set up a tunnel (Cloudflare Tunnel, Tailscale, or ngrok).
+For internet access:
+- If the server has a public IP, access it directly (use HTTPS via reverse proxy for production)
+- If behind NAT, set up a tunnel (Cloudflare Tunnel, Tailscale, or ngrok)
 
 ### What's the access token for?
 

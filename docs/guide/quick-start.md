@@ -43,13 +43,7 @@ This starts Claude Code wrapped with HAPI. The session appears in the web UI.
 Open your browser:
 
 ```
-http://localhost:3006
-```
-
-Or from another device on the same network:
-
-```
-http://<your-computer-ip>:3006
+http://<your-ip>:3006
 ```
 
 Enter your access token to log in.

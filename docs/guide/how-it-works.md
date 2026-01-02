@@ -6,7 +6,7 @@ HAPI consists of three interconnected components that work together to provide r
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────┐
-│                           Your Local Machine                               │
+│                      Your Machine (Local or Server)                        │
 │                                                                            │
 │   ┌──────────────┐         ┌──────────────┐         ┌──────────────┐       │
 │   │              │         │              │         │              │       │
@@ -40,6 +40,8 @@ HAPI consists of three interconnected components that work together to provide r
 │                            Your Phone                                      │
 └────────────────────────────────────────────────────────────────────────────┘
 ```
+
+> **Note:** The server can run on your local desktop or a remote server (VPS, cloud, etc.). If deployed on a server with a public IP, tunneling is not required.
 
 ## Components
 
