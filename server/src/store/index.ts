@@ -2,47 +2,11 @@ import { Database } from 'bun:sqlite'
 import { chmodSync, closeSync, existsSync, mkdirSync, openSync } from 'node:fs'
 import { dirname } from 'node:path'
 
-import type {
-    StoredMachine,
-    StoredMessage,
-    StoredPushSubscription,
-    StoredSession,
-    StoredUser,
-    VersionedUpdateResult
-} from './types'
-import {
-    deleteSession,
-    getOrCreateSession,
-    getSession,
-    getSessionByNamespace,
-    getSessions,
-    getSessionsByNamespace,
-    setSessionTodos,
-    updateSessionAgentState,
-    updateSessionMetadata
-} from './sessions'
-import {
-    getMachine,
-    getMachineByNamespace,
-    getMachines,
-    getMachinesByNamespace,
-    getOrCreateMachine,
-    updateMachineDaemonState,
-    updateMachineMetadata
-} from './machines'
-import { addMessage, getMessages, getMessagesAfter } from './messages'
-import {
-    addUser,
-    getUser,
-    getUsersByPlatform,
-    getUsersByPlatformAndNamespace,
-    removeUser
-} from './users'
-import {
-    addPushSubscription,
-    getPushSubscriptionsByNamespace,
-    removePushSubscription
-} from './pushSubscriptions'
+import { MachineStore } from './machineStore'
+import { MessageStore } from './messageStore'
+import { PushStore } from './pushStore'
+import { SessionStore } from './sessionStore'
+import { UserStore } from './userStore'
 
 export type {
     StoredMachine,
@@ -52,6 +16,11 @@ export type {
     StoredUser,
     VersionedUpdateResult
 } from './types'
+export { MachineStore } from './machineStore'
+export { MessageStore } from './messageStore'
+export { PushStore } from './pushStore'
+export { SessionStore } from './sessionStore'
+export { UserStore } from './userStore'
 
 const SCHEMA_VERSION = 1
 const REQUIRED_TABLES = [
@@ -65,6 +34,12 @@ const REQUIRED_TABLES = [
 export class Store {
     private db: Database
     private readonly dbPath: string
+
+    readonly sessions: SessionStore
+    readonly machines: MachineStore
+    readonly messages: MessageStore
+    readonly users: UserStore
+    readonly push: PushStore
 
     constructor(dbPath: string) {
         this.dbPath = dbPath
@@ -100,6 +75,12 @@ export class Store {
                 }
             }
         }
+
+        this.sessions = new SessionStore(this.db)
+        this.machines = new MachineStore(this.db)
+        this.messages = new MessageStore(this.db)
+        this.users = new UserStore(this.db)
+        this.push = new PushStore(this.db)
     }
 
     private initSchema(): void {
@@ -237,142 +218,5 @@ export class Store {
             'This build does not run compatibility migrations. ' +
             'Back up and rebuild the database, or run an offline migration to the expected schema version.'
         )
-    }
-
-    getOrCreateSession(tag: string, metadata: unknown, agentState: unknown, namespace: string): StoredSession {
-        return getOrCreateSession(this.db, tag, metadata, agentState, namespace)
-    }
-
-    updateSessionMetadata(
-        id: string,
-        metadata: unknown,
-        expectedVersion: number,
-        namespace: string,
-        options?: { touchUpdatedAt?: boolean }
-    ): VersionedUpdateResult<unknown | null> {
-        return updateSessionMetadata(this.db, id, metadata, expectedVersion, namespace, options)
-    }
-
-    updateSessionAgentState(
-        id: string,
-        agentState: unknown,
-        expectedVersion: number,
-        namespace: string
-    ): VersionedUpdateResult<unknown | null> {
-        return updateSessionAgentState(this.db, id, agentState, expectedVersion, namespace)
-    }
-
-    setSessionTodos(id: string, todos: unknown, todosUpdatedAt: number, namespace: string): boolean {
-        return setSessionTodos(this.db, id, todos, todosUpdatedAt, namespace)
-    }
-
-    getSession(id: string): StoredSession | null {
-        return getSession(this.db, id)
-    }
-
-    getSessionByNamespace(id: string, namespace: string): StoredSession | null {
-        return getSessionByNamespace(this.db, id, namespace)
-    }
-
-    getSessions(): StoredSession[] {
-        return getSessions(this.db)
-    }
-
-    getSessionsByNamespace(namespace: string): StoredSession[] {
-        return getSessionsByNamespace(this.db, namespace)
-    }
-
-    getOrCreateMachine(id: string, metadata: unknown, daemonState: unknown, namespace: string): StoredMachine {
-        return getOrCreateMachine(this.db, id, metadata, daemonState, namespace)
-    }
-
-    updateMachineMetadata(
-        id: string,
-        metadata: unknown,
-        expectedVersion: number,
-        namespace: string
-    ): VersionedUpdateResult<unknown | null> {
-        return updateMachineMetadata(this.db, id, metadata, expectedVersion, namespace)
-    }
-
-    updateMachineDaemonState(
-        id: string,
-        daemonState: unknown,
-        expectedVersion: number,
-        namespace: string
-    ): VersionedUpdateResult<unknown | null> {
-        return updateMachineDaemonState(this.db, id, daemonState, expectedVersion, namespace)
-    }
-
-    getMachine(id: string): StoredMachine | null {
-        return getMachine(this.db, id)
-    }
-
-    getMachineByNamespace(id: string, namespace: string): StoredMachine | null {
-        return getMachineByNamespace(this.db, id, namespace)
-    }
-
-    getMachines(): StoredMachine[] {
-        return getMachines(this.db)
-    }
-
-    getMachinesByNamespace(namespace: string): StoredMachine[] {
-        return getMachinesByNamespace(this.db, namespace)
-    }
-
-    addMessage(sessionId: string, content: unknown, localId?: string): StoredMessage {
-        return addMessage(this.db, sessionId, content, localId)
-    }
-
-    getMessages(sessionId: string, limit: number = 200, beforeSeq?: number): StoredMessage[] {
-        return getMessages(this.db, sessionId, limit, beforeSeq)
-    }
-
-    getMessagesAfter(sessionId: string, afterSeq: number, limit: number = 200): StoredMessage[] {
-        return getMessagesAfter(this.db, sessionId, afterSeq, limit)
-    }
-
-    getUser(platform: string, platformUserId: string): StoredUser | null {
-        return getUser(this.db, platform, platformUserId)
-    }
-
-    getUsersByPlatform(platform: string): StoredUser[] {
-        return getUsersByPlatform(this.db, platform)
-    }
-
-    getUsersByPlatformAndNamespace(platform: string, namespace: string): StoredUser[] {
-        return getUsersByPlatformAndNamespace(this.db, platform, namespace)
-    }
-
-    addUser(platform: string, platformUserId: string, namespace: string): StoredUser {
-        return addUser(this.db, platform, platformUserId, namespace)
-    }
-
-    removeUser(platform: string, platformUserId: string): boolean {
-        return removeUser(this.db, platform, platformUserId)
-    }
-
-    /**
-     * Delete a session and all associated data.
-     * Messages are automatically cascade-deleted via foreign key constraint.
-     * Todos are stored in the sessions.todos column and deleted with the row.
-     */
-    deleteSession(id: string, namespace: string): boolean {
-        return deleteSession(this.db, id, namespace)
-    }
-
-    addPushSubscription(
-        namespace: string,
-        subscription: { endpoint: string; p256dh: string; auth: string }
-    ): void {
-        addPushSubscription(this.db, namespace, subscription)
-    }
-
-    removePushSubscription(namespace: string, endpoint: string): void {
-        removePushSubscription(this.db, namespace, endpoint)
-    }
-
-    getPushSubscriptionsByNamespace(namespace: string): StoredPushSubscription[] {
-        return getPushSubscriptionsByNamespace(this.db, namespace)
     }
 }

@@ -54,11 +54,11 @@ export function registerCliHandlers(socket: SocketWithData, deps: CliHandlersDep
         if (!namespace) {
             return { ok: false, reason: 'namespace-missing' }
         }
-        const session = store.getSessionByNamespace(sessionId, namespace)
+        const session = store.sessions.getSessionByNamespace(sessionId, namespace)
         if (session) {
             return { ok: true, value: session }
         }
-        if (store.getSession(sessionId)) {
+        if (store.sessions.getSession(sessionId)) {
             return { ok: false, reason: 'access-denied' }
         }
         return { ok: false, reason: 'not-found' }
@@ -68,11 +68,11 @@ export function registerCliHandlers(socket: SocketWithData, deps: CliHandlersDep
         if (!namespace) {
             return { ok: false, reason: 'namespace-missing' }
         }
-        const machine = store.getMachineByNamespace(machineId, namespace)
+        const machine = store.machines.getMachineByNamespace(machineId, namespace)
         if (machine) {
             return { ok: true, value: machine }
         }
-        if (store.getMachine(machineId)) {
+        if (store.machines.getMachine(machineId)) {
             return { ok: false, reason: 'access-denied' }
         }
         return { ok: false, reason: 'not-found' }

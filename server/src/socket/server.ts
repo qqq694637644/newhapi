@@ -138,7 +138,7 @@ export function createSocketServer(deps: SocketServerDeps): {
     })
     terminalNs.on('connection', (socket) => registerTerminalHandlers(socket, {
         io,
-        getSession: (sessionId) => deps.getSession?.(sessionId) ?? deps.store.getSession(sessionId),
+        getSession: (sessionId) => deps.getSession?.(sessionId) ?? deps.store.sessions.getSession(sessionId),
         terminalRegistry,
         maxTerminalsPerSocket,
         maxTerminalsPerSession

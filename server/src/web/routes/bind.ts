@@ -40,11 +40,11 @@ export function createBindRoutes(jwtSecret: Uint8Array, store: Store): Hono<WebA
         }
 
         const telegramUserId = String(result.user.id)
-        const existingUser = store.getUser('telegram', telegramUserId)
+        const existingUser = store.users.getUser('telegram', telegramUserId)
         if (existingUser && existingUser.namespace !== namespace) {
             return c.json({ error: 'already_bound' }, 409)
         }
-        store.addUser('telegram', telegramUserId, namespace)
+        store.users.addUser('telegram', telegramUserId, namespace)
 
         const userId = await getOrCreateOwnerId()
 

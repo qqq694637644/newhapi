@@ -86,11 +86,11 @@ export function registerSessionHandlers(socket: SocketWithData, deps: SessionHan
         }
         const session = sessionAccess.value
 
-        const msg = store.addMessage(sid, content, localId)
+        const msg = store.messages.addMessage(sid, content, localId)
 
         const todos = extractTodoWriteTodosFromMessageContent(content)
         if (todos) {
-            const updated = store.setSessionTodos(sid, todos, msg.createdAt, session.namespace)
+            const updated = store.sessions.setSessionTodos(sid, todos, msg.createdAt, session.namespace)
             if (updated) {
                 onWebappEvent?.({ type: 'session-updated', sessionId: sid, data: { sid } })
             }
@@ -141,7 +141,12 @@ export function registerSessionHandlers(socket: SocketWithData, deps: SessionHan
             return
         }
 
-        const result = store.updateSessionMetadata(sid, metadata, expectedVersion, sessionAccess.value.namespace)
+        const result = store.sessions.updateSessionMetadata(
+            sid,
+            metadata,
+            expectedVersion,
+            sessionAccess.value.namespace
+        )
         if (result.result === 'success') {
             cb({ result: 'success', version: result.version, metadata: result.value })
         } else if (result.result === 'version-mismatch') {
@@ -181,7 +186,12 @@ export function registerSessionHandlers(socket: SocketWithData, deps: SessionHan
             return
         }
 
-        const result = store.updateSessionAgentState(sid, agentState, expectedVersion, sessionAccess.value.namespace)
+        const result = store.sessions.updateSessionAgentState(
+            sid,
+            agentState,
+            expectedVersion,
+            sessionAccess.value.namespace
+        )
         if (result.result === 'success') {
             cb({ result: 'success', version: result.version, agentState: result.value })
         } else if (result.result === 'version-mismatch') {

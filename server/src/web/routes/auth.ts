@@ -56,7 +56,7 @@ export function createAuthRoutes(jwtSecret: Uint8Array, store: Store): Hono<WebA
             }
 
             const telegramUserId = String(result.user.id)
-            const storedUser = store.getUser('telegram', telegramUserId)
+            const storedUser = store.users.getUser('telegram', telegramUserId)
             if (!storedUser) {
                 return c.json({ error: 'not_bound' }, 401)
             }
