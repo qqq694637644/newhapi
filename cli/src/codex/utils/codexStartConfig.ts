@@ -1,9 +1,7 @@
-import { trimIdent } from '@/utils/trimIdent';
 import type { CodexSessionConfig } from '../types';
 import type { EnhancedMode } from '../loop';
 import type { CodexCliOverrides } from './codexCliOverrides';
-
-const TITLE_INSTRUCTION = trimIdent(`Based on this message, call functions.hapi__change_title to change chat session title that would represent the current task. If chat idea would change dramatically - call this function again to update the title.`);
+import { TITLE_INSTRUCTION } from './systemPrompt';
 
 function resolveApprovalPolicy(mode: EnhancedMode): CodexSessionConfig['approval-policy'] {
     switch (mode.permissionMode) {
