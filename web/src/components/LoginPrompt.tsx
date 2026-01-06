@@ -98,66 +98,6 @@ export function LoginPrompt(props: LoginPromptProps) {
 
     return (
         <div className="relative h-full flex items-center justify-center p-4">
-            {!isBindMode && (
-                <div className="absolute right-4 top-4 z-10">
-                    <Dialog open={isServerDialogOpen} onOpenChange={setIsServerDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button variant="outline" size="sm" className="gap-2">
-                                Server
-                                <span className="text-[10px] uppercase tracking-wide text-[var(--app-hint)]">
-                                    {props.serverUrl ? 'Custom' : 'Default'}
-                                </span>
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-md">
-                            <DialogHeader>
-                                <DialogTitle>Server URL</DialogTitle>
-                                <DialogDescription>
-                                    Set the hapi server origin for API and live updates.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <form onSubmit={handleSaveServer} className="space-y-4">
-                                <div className="text-xs text-[var(--app-hint)]">
-                                    Current: {serverSummary}
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-medium">Server origin</label>
-                                    <input
-                                        type="url"
-                                        value={serverInput}
-                                        onChange={(e) => {
-                                            setServerInput(e.target.value)
-                                            setServerError(null)
-                                        }}
-                                        placeholder="https://hapi.example.com"
-                                        className="w-full px-3 py-2.5 rounded-lg border border-[var(--app-border)] bg-[var(--app-bg)] text-[var(--app-fg)] placeholder:text-[var(--app-hint)] focus:outline-none focus:ring-2 focus:ring-[var(--app-button)] focus:border-transparent"
-                                    />
-                                    <div className="text-[11px] text-[var(--app-hint)]">
-                                        Use http(s) only. Any path is ignored.
-                                    </div>
-                                </div>
-
-                                {serverError && (
-                                    <div className="text-sm text-red-500">
-                                        {serverError}
-                                    </div>
-                                )}
-
-                                <div className="flex items-center justify-end gap-2">
-                                    {props.serverUrl && (
-                                        <Button type="button" variant="outline" onClick={handleClearServer}>
-                                            Use same origin
-                                        </Button>
-                                    )}
-                                    <Button type="submit">
-                                        Save server
-                                    </Button>
-                                </div>
-                            </form>
-                        </DialogContent>
-                    </Dialog>
-                </div>
-            )}
             <div className="w-full max-w-sm space-y-6">
                 {/* Header */}
                 <div className="text-center space-y-2">
@@ -203,6 +143,68 @@ export function LoginPrompt(props: LoginPromptProps) {
                         )}
                     </button>
                 </form>
+
+                {/* Help links */}
+                {!isBindMode && (
+                    <div className="flex items-center justify-between text-xs text-[var(--app-hint)]">
+                        <a href="https://hapi.run/docs" target="_blank" rel="noopener noreferrer" className="underline hover:text-[var(--app-fg)]">
+                            Needs help?
+                        </a>
+                        <Dialog open={isServerDialogOpen} onOpenChange={setIsServerDialogOpen}>
+                            <DialogTrigger asChild>
+                                <button type="button" className="underline hover:text-[var(--app-fg)]">
+                                    Server {props.serverUrl ? '(Custom)' : '(Default)'}
+                                </button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-md">
+                                <DialogHeader>
+                                    <DialogTitle>Server URL</DialogTitle>
+                                    <DialogDescription>
+                                        Set the hapi server origin for API and live updates.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <form onSubmit={handleSaveServer} className="space-y-4">
+                                    <div className="text-xs text-[var(--app-hint)]">
+                                        Current: {serverSummary}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-medium">Server origin</label>
+                                        <input
+                                            type="url"
+                                            value={serverInput}
+                                            onChange={(e) => {
+                                                setServerInput(e.target.value)
+                                                setServerError(null)
+                                            }}
+                                            placeholder="https://hapi.example.com"
+                                            className="w-full px-3 py-2.5 rounded-lg border border-[var(--app-border)] bg-[var(--app-bg)] text-[var(--app-fg)] placeholder:text-[var(--app-hint)] focus:outline-none focus:ring-2 focus:ring-[var(--app-button)] focus:border-transparent"
+                                        />
+                                        <div className="text-[11px] text-[var(--app-hint)]">
+                                            Use http(s) only. Any path is ignored.
+                                        </div>
+                                    </div>
+
+                                    {serverError && (
+                                        <div className="text-sm text-red-500">
+                                            {serverError}
+                                        </div>
+                                    )}
+
+                                    <div className="flex items-center justify-end gap-2">
+                                        {props.serverUrl && (
+                                            <Button type="button" variant="outline" onClick={handleClearServer}>
+                                                Use same origin
+                                            </Button>
+                                        )}
+                                        <Button type="submit">
+                                            Save server
+                                        </Button>
+                                    </div>
+                                </form>
+                            </DialogContent>
+                        </Dialog>
+                    </div>
+                )}
             </div>
 
             {/* Footer */}
