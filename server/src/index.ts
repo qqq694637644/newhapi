@@ -68,6 +68,7 @@ async function main() {
     }
 
     // Display other configuration sources
+    console.log(`[Server] WEBAPP_HOST: ${config.webappHost} (${formatSource(config.sources.webappHost)})`)
     console.log(`[Server] WEBAPP_PORT: ${config.webappPort} (${formatSource(config.sources.webappPort)})`)
     console.log(`[Server] WEBAPP_URL: ${config.miniAppUrl} (${formatSource(config.sources.webappUrl)})`)
 

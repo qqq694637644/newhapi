@@ -27,6 +27,7 @@ export type ConfigSource = 'env' | 'file' | 'default'
 
 export interface ConfigSources {
     telegramBotToken: ConfigSource
+    webappHost: ConfigSource
     webappPort: ConfigSource
     webappUrl: ConfigSource
     corsOrigins: ConfigSource
@@ -61,6 +62,9 @@ class Configuration {
     /** Port for the Mini App HTTP server */
     public readonly webappPort: number
 
+    /** Host/IP to bind the Mini App HTTP server to */
+    public readonly webappHost: string
+
     /** Public HTTPS URL for the Telegram Mini App (used in WebApp buttons) */
     public readonly miniAppUrl: string
 
@@ -84,6 +88,7 @@ class Configuration {
         // Apply server settings
         this.telegramBotToken = serverSettings.telegramBotToken
         this.telegramEnabled = Boolean(this.telegramBotToken)
+        this.webappHost = serverSettings.webappHost
         this.webappPort = serverSettings.webappPort
         this.miniAppUrl = serverSettings.webappUrl
         this.corsOrigins = serverSettings.corsOrigins

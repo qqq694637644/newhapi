@@ -190,6 +190,7 @@ export async function startWebServer(options: {
     const socketHandler = options.socketEngine.handler()
 
     const server = Bun.serve({
+        hostname: configuration.webappHost,
         port: configuration.webappPort,
         idleTimeout: Math.max(30, socketHandler.idleTimeout),
         maxRequestBodySize: socketHandler.maxRequestBodySize,
@@ -203,7 +204,7 @@ export async function startWebServer(options: {
         }
     })
 
-    console.log(`[Web] Mini App server listening on :${configuration.webappPort}`)
+    console.log(`[Web] Mini App server listening on ${configuration.webappHost}:${configuration.webappPort}`)
     console.log(`[Web] Mini App public URL: ${configuration.miniAppUrl}`)
 
     return server
