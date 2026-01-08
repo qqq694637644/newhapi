@@ -10,42 +10,8 @@ import { initializeToken } from '@/ui/tokenInit'
 import { spawnHappyCLI } from '@/utils/spawnHappyCLI'
 import { maybeAutoStartServer } from '@/utils/autoStartServer'
 import { withBunRuntimeEnv } from '@/utils/bunRuntime'
+import { extractErrorInfo } from '@/utils/errorUtils'
 import type { CommandDefinition } from './types'
-
-function extractErrorInfo(error: unknown): {
-    message: string
-    messageLower: string
-    axiosCode?: string
-    httpStatus?: number
-    responseErrorText: string
-} {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    const messageLower = message.toLowerCase()
-
-    if (typeof error !== 'object' || error === null) {
-        return { message, messageLower, responseErrorText: '' }
-    }
-
-    const record = error as Record<string, unknown>
-    const axiosCode = typeof record.code === 'string' ? record.code : undefined
-    const response = typeof record.response === 'object' && record.response !== null
-        ? (record.response as Record<string, unknown>)
-        : undefined
-    const httpStatus = typeof response?.status === 'number' ? response.status : undefined
-    const responseData = response?.data
-    const responseError = typeof responseData === 'object' && responseData !== null
-        ? (responseData as Record<string, unknown>).error
-        : undefined
-    const responseErrorText = typeof responseError === 'string' ? responseError : ''
-
-    return {
-        message,
-        messageLower,
-        axiosCode,
-        httpStatus,
-        responseErrorText
-    }
-}
 
 export const claudeCommand: CommandDefinition = {
     name: 'default',
