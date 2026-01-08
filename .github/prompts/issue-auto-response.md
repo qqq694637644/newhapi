@@ -19,6 +19,18 @@ HAPI is a local-first tool for running AI coding sessions (Claude Code/Codex/Gem
 
 Key docs: `README.md`, `AGENTS.md`, `cli/README.md`, `server/README.md`, `web/README.md`
 
+## Issue Context (required)
+
+Before any analysis, load the issue title/body/labels from the GitHub Actions event payload.
+
+```bash
+issue_number=$(jq -r '.issue.number' "$GITHUB_EVENT_PATH")
+repo=$(jq -r '.repository.full_name' "$GITHUB_EVENT_PATH")
+gh issue view "$issue_number" -R "$repo" --json number,title,body,labels,author,authorAssociation
+```
+
+If the issue body is empty or only whitespace, treat it as empty/spam and skip.
+
 ## Task
 
 1. **Skip** if: issue already has bot response, has `duplicate`/`spam`/`bot-skip` label, or is empty/spam
@@ -35,6 +47,7 @@ Key docs: `README.md`, `AGENTS.md`, `cli/README.md`, `server/README.md`, `web/RE
 - **Tone**: Professional, helpful, concise
 - **Signature**: End with `*HAPI Bot*`
 - **Missing Info**: If the issue lacks needed details, ask for the minimum required info (max 4 items) and explain why it is needed
+- **More Info**: If you need more details, use `gh` to fetch them (e.g., `gh issue view`).
 
 ## Response Format
 
