@@ -56,6 +56,34 @@ If the issue body is empty or only whitespace, treat it as empty/spam and skip.
 3. **Missing Info** (if needed): short questions for version, component (cli/server/web), OS, repro, logs
 4. **Next Steps**: minimal, safe guidance; no promises
 
+### Inline Comments
+
+For each validated issue, create an inline comment:
+
+```bash
+gh api repos/{owner}/{repo}/pulls/{pr_number}/comments \
+  -f body="**[SEVERITY]** [ISSUE-TYPE] Brief description
+
+**Why this is a problem**: Detailed explanation.
+
+**Suggested fix**:
+\`\`\`{language}
+// Corrected code here
+\`\`\`" \
+  -f commit_id="{LATEST_COMMIT_SHA}" \
+  -f path="{FILE_PATH}" \
+  -f line={LINE_NUMBER} \
+  -f side="RIGHT"
+```
+
+### Summary Report (MANDATORY)
+
+Submit a comprehensive review summary:
+
+```bash
+gh pr review --comment --body "{SUMMARY}"
+```
+
 ## Constraints
 
 - **DO NOT** create PRs, modify code, or make commits

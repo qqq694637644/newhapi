@@ -72,3 +72,9 @@ gh pr diff "$pr_number" -R "$repo"
 
 **Testing**
 - Suggested tests or “Not run (automation)”
+
+## Post Response to Github
+
+```bash
+gh issue comment <number> --body "Your verified response here"
+```
