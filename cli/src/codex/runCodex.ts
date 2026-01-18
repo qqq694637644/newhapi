@@ -10,6 +10,7 @@ import { bootstrapSession } from '@/agent/sessionFactory';
 import { createModeChangeHandler, createRunnerLifecycle, setControlledByUser } from '@/agent/runnerLifecycle';
 import { isPermissionModeAllowedForFlavor } from '@hapi/protocol';
 import { PermissionModeSchema } from '@hapi/protocol/schemas';
+import { formatMessageWithAttachments } from '@/utils/attachmentFormatter';
 
 export { emitReadyIfIdle } from './utils/emitReadyIfIdle';
 
@@ -73,7 +74,8 @@ export async function runCodex(opts: {
         const enhancedMode: EnhancedMode = {
             permissionMode: messagePermissionMode ?? 'default'
         };
-        messageQueue.push(message.content.text, enhancedMode);
+        const formattedText = formatMessageWithAttachments(message.content.text, message.content.attachments);
+        messageQueue.push(formattedText, enhancedMode);
     });
 
     const formatFailureReason = (message: string): string => {
