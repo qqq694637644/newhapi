@@ -1,13 +1,9 @@
+import { TerminalOpenPayloadSchema } from '@hapi/protocol'
 import { z } from 'zod'
 import type { TerminalRegistry, TerminalRegistryEntry } from '../terminalRegistry'
 import type { SocketServer, SocketWithData } from '../socketTypes'
 
-const terminalCreateSchema = z.object({
-    sessionId: z.string().min(1),
-    terminalId: z.string().min(1),
-    cols: z.number().int().positive(),
-    rows: z.number().int().positive()
-})
+const terminalCreateSchema = TerminalOpenPayloadSchema
 
 const terminalWriteSchema = z.object({
     terminalId: z.string().min(1),

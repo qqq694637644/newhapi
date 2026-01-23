@@ -3,7 +3,7 @@ import type { Store, StoredMachine, StoredSession } from '../../../store'
 import type { RpcRegistry } from '../../rpcRegistry'
 import type { SyncEvent } from '../../../sync/syncEngine'
 import type { TerminalRegistry } from '../../terminalRegistry'
-import type { SocketServer, SocketWithData } from '../../socketTypes'
+import type { CliSocketWithData, SocketServer } from '../../socketTypes'
 import { registerMachineHandlers } from './machineHandlers'
 import { registerRpcHandlers } from './rpcHandlers'
 import { registerSessionHandlers } from './sessionHandlers'
@@ -45,7 +45,7 @@ type AccessResult<T> =
     | { ok: true; value: T }
     | { ok: false; reason: AccessErrorReason }
 
-export function registerCliHandlers(socket: SocketWithData, deps: CliHandlersDeps): void {
+export function registerCliHandlers(socket: CliSocketWithData, deps: CliHandlersDeps): void {
     const { io, store, rpcRegistry, terminalRegistry, onSessionAlive, onSessionEnd, onMachineAlive, onWebappEvent } = deps
     const terminalNamespace = io.of('/terminal')
     const namespace = typeof socket.data.namespace === 'string' ? socket.data.namespace : null

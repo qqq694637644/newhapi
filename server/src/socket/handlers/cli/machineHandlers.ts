@@ -1,8 +1,9 @@
+import type { ClientToServerEvents } from '@hapi/protocol'
 import { z } from 'zod'
 import { randomUUID } from 'node:crypto'
 import type { Store, StoredMachine } from '../../../store'
 import type { SyncEvent } from '../../../sync/syncEngine'
-import type { SocketWithData } from '../../socketTypes'
+import type { CliSocketWithData } from '../../socketTypes'
 
 type MachineAlivePayload = {
     machineId: string
@@ -18,6 +19,9 @@ type AccessResult<T> =
 type ResolveMachineAccess = (machineId: string) => AccessResult<StoredMachine>
 
 type EmitAccessError = (scope: 'session' | 'machine', id: string, reason: AccessErrorReason) => void
+
+type MachineUpdateMetadataHandler = ClientToServerEvents['machine-update-metadata']
+type MachineUpdateStateHandler = ClientToServerEvents['machine-update-state']
 
 const machineUpdateMetadataSchema = z.object({
     machineId: z.string(),
@@ -39,7 +43,7 @@ export type MachineHandlersDeps = {
     onWebappEvent?: (event: SyncEvent) => void
 }
 
-export function registerMachineHandlers(socket: SocketWithData, deps: MachineHandlersDeps): void {
+export function registerMachineHandlers(socket: CliSocketWithData, deps: MachineHandlersDeps): void {
     const { store, resolveMachineAccess, emitAccessError, onMachineAlive, onWebappEvent } = deps
 
     socket.on('machine-alive', (data: MachineAlivePayload) => {
@@ -54,7 +58,7 @@ export function registerMachineHandlers(socket: SocketWithData, deps: MachineHan
         onMachineAlive?.(data)
     })
 
-    const handleMachineMetadataUpdate = (data: unknown, cb: (answer: unknown) => void) => {
+    const handleMachineMetadataUpdate: MachineUpdateMetadataHandler = (data, cb) => {
         const parsed = machineUpdateMetadataSchema.safeParse(data)
         if (!parsed.success) {
             cb({ result: 'error' })
@@ -94,7 +98,7 @@ export function registerMachineHandlers(socket: SocketWithData, deps: MachineHan
         }
     }
 
-    const handleMachineStateUpdate = (data: unknown, cb: (answer: unknown) => void) => {
+    const handleMachineStateUpdate: MachineUpdateStateHandler = (data, cb) => {
         const parsed = machineUpdateStateSchema.safeParse(data)
         if (!parsed.success) {
             cb({ result: 'error' })

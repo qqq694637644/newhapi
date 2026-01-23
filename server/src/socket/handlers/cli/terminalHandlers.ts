@@ -1,7 +1,12 @@
-import { z } from 'zod'
+import {
+    TerminalErrorPayloadSchema,
+    TerminalExitPayloadSchema,
+    TerminalOutputPayloadSchema,
+    TerminalReadyPayloadSchema
+} from '@hapi/protocol'
 import type { StoredSession } from '../../../store'
 import type { TerminalRegistry } from '../../terminalRegistry'
-import type { SocketServer, SocketWithData } from '../../socketTypes'
+import type { CliSocketWithData, SocketServer } from '../../socketTypes'
 
 type AccessErrorReason = 'namespace-missing' | 'access-denied' | 'not-found'
 
@@ -15,29 +20,10 @@ type EmitAccessError = (scope: 'session' | 'machine', id: string, reason: Access
 
 type SocketNamespace = ReturnType<SocketServer['of']>
 
-const terminalReadySchema = z.object({
-    sessionId: z.string().min(1),
-    terminalId: z.string().min(1)
-})
-
-const terminalOutputSchema = z.object({
-    sessionId: z.string().min(1),
-    terminalId: z.string().min(1),
-    data: z.string()
-})
-
-const terminalExitSchema = z.object({
-    sessionId: z.string().min(1),
-    terminalId: z.string().min(1),
-    code: z.number().int().nullable(),
-    signal: z.string().nullable()
-})
-
-const terminalErrorSchema = z.object({
-    sessionId: z.string().min(1),
-    terminalId: z.string().min(1),
-    message: z.string()
-})
+const terminalReadySchema = TerminalReadyPayloadSchema
+const terminalOutputSchema = TerminalOutputPayloadSchema
+const terminalExitSchema = TerminalExitPayloadSchema
+const terminalErrorSchema = TerminalErrorPayloadSchema
 
 export type TerminalHandlersDeps = {
     terminalRegistry: TerminalRegistry
@@ -46,7 +32,7 @@ export type TerminalHandlersDeps = {
     emitAccessError: EmitAccessError
 }
 
-export function registerTerminalHandlers(socket: SocketWithData, deps: TerminalHandlersDeps): void {
+export function registerTerminalHandlers(socket: CliSocketWithData, deps: TerminalHandlersDeps): void {
     const { terminalRegistry, terminalNamespace, resolveSessionAccess, emitAccessError } = deps
 
     const forwardTerminalEvent = (event: string, payload: { sessionId: string; terminalId: string } & Record<string, unknown>) => {
@@ -116,7 +102,7 @@ export function registerTerminalHandlers(socket: SocketWithData, deps: TerminalH
     })
 }
 
-export function cleanupTerminalHandlers(socket: SocketWithData, deps: { terminalRegistry: TerminalRegistry; terminalNamespace: SocketNamespace }): void {
+export function cleanupTerminalHandlers(socket: CliSocketWithData, deps: { terminalRegistry: TerminalRegistry; terminalNamespace: SocketNamespace }): void {
     const removed = deps.terminalRegistry.removeByCliSocket(socket.id)
     for (const entry of removed) {
         const terminalSocket = deps.terminalNamespace.sockets.get(entry.socketId)

@@ -1,10 +1,11 @@
+import type { ClientToServerEvents } from '@hapi/protocol'
 import { z } from 'zod'
 import { randomUUID } from 'node:crypto'
 import type { ModelMode, PermissionMode } from '@hapi/protocol/types'
 import type { Store, StoredSession } from '../../../store'
 import type { SyncEvent } from '../../../sync/syncEngine'
 import { extractTodoWriteTodosFromMessageContent } from '../../../sync/todos'
-import type { SocketWithData } from '../../socketTypes'
+import type { CliSocketWithData } from '../../socketTypes'
 
 type SessionAlivePayload = {
     sid: string
@@ -29,6 +30,9 @@ type AccessResult<T> =
 type ResolveSessionAccess = (sessionId: string) => AccessResult<StoredSession>
 
 type EmitAccessError = (scope: 'session' | 'machine', id: string, reason: AccessErrorReason) => void
+
+type UpdateMetadataHandler = ClientToServerEvents['update-metadata']
+type UpdateStateHandler = ClientToServerEvents['update-state']
 
 const messageSchema = z.object({
     sid: z.string(),
@@ -57,7 +61,7 @@ export type SessionHandlersDeps = {
     onWebappEvent?: (event: SyncEvent) => void
 }
 
-export function registerSessionHandlers(socket: SocketWithData, deps: SessionHandlersDeps): void {
+export function registerSessionHandlers(socket: CliSocketWithData, deps: SessionHandlersDeps): void {
     const { store, resolveSessionAccess, emitAccessError, onSessionAlive, onSessionEnd, onWebappEvent } = deps
 
     socket.on('message', (data: unknown) => {
@@ -127,7 +131,7 @@ export function registerSessionHandlers(socket: SocketWithData, deps: SessionHan
         })
     })
 
-    socket.on('update-metadata', (data: unknown, cb: (answer: unknown) => void) => {
+    const handleUpdateMetadata: UpdateMetadataHandler = (data, cb) => {
         const parsed = updateMetadataSchema.safeParse(data)
         if (!parsed.success) {
             cb({ result: 'error' })
@@ -170,9 +174,11 @@ export function registerSessionHandlers(socket: SocketWithData, deps: SessionHan
             socket.to(`session:${sid}`).emit('update', update)
             onWebappEvent?.({ type: 'session-updated', sessionId: sid, data: { sid } })
         }
-    })
+    }
 
-    socket.on('update-state', (data: unknown, cb: (answer: unknown) => void) => {
+    socket.on('update-metadata', handleUpdateMetadata)
+
+    const handleUpdateState: UpdateStateHandler = (data, cb) => {
         const parsed = updateStateSchema.safeParse(data)
         if (!parsed.success) {
             cb({ result: 'error' })
@@ -215,7 +221,9 @@ export function registerSessionHandlers(socket: SocketWithData, deps: SessionHan
             socket.to(`session:${sid}`).emit('update', update)
             onWebappEvent?.({ type: 'session-updated', sessionId: sid, data: { sid } })
         }
-    })
+    }
+
+    socket.on('update-state', handleUpdateState)
 
     socket.on('session-alive', (data: SessionAlivePayload) => {
         if (!data || typeof data.sid !== 'string' || typeof data.time !== 'number') {

@@ -11,7 +11,7 @@ import { registerTerminalHandlers } from './handlers/terminal'
 import { RpcRegistry } from './rpcRegistry'
 import type { SyncEvent } from '../sync/syncEngine'
 import { TerminalRegistry } from './terminalRegistry'
-import type { SocketData, SocketServer } from './socketTypes'
+import type { CliSocketWithData, SocketData, SocketServer } from './socketTypes'
 
 const jwtPayloadSchema = z.object({
     uid: z.number(),
@@ -105,7 +105,7 @@ export function createSocketServer(deps: SocketServerDeps): {
         socket.data.namespace = parsedToken.namespace
         next()
     })
-    cliNs.on('connection', (socket) => registerCliHandlers(socket, {
+    cliNs.on('connection', (socket) => registerCliHandlers(socket as CliSocketWithData, {
         io,
         store: deps.store,
         rpcRegistry,

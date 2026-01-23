@@ -2,16 +2,6 @@ import { AgentStateSchema, MetadataSchema, ModelModeSchema, PermissionModeSchema
 import type { ModelMode, PermissionMode } from '@hapi/protocol/types'
 import { z } from 'zod'
 import { UsageSchema } from '@/claude/types'
-import type {
-    TerminalClosePayload,
-    TerminalExitPayload,
-    TerminalOpenPayload,
-    TerminalOutputPayload,
-    TerminalReadyPayload,
-    TerminalResizePayload,
-    TerminalWritePayload,
-    TerminalErrorPayload
-} from '@/terminal/types'
 
 export type Usage = z.infer<typeof UsageSchema>
 
@@ -55,59 +45,6 @@ export type Machine = {
     runnerState: RunnerState | null
     runnerStateVersion: number
 }
-
-export const UpdateNewMessageBodySchema = z.object({
-    t: z.literal('new-message'),
-    sid: z.string(),
-    message: z.object({
-        id: z.string(),
-        seq: z.number(),
-        createdAt: z.number(),
-        localId: z.string().nullable().optional(),
-        content: z.unknown()
-    })
-})
-
-export type UpdateNewMessageBody = z.infer<typeof UpdateNewMessageBodySchema>
-
-export const UpdateSessionBodySchema = z.object({
-    t: z.literal('update-session'),
-    sid: z.string(),
-    metadata: z.object({
-        version: z.number(),
-        value: z.unknown()
-    }).nullable(),
-    agentState: z.object({
-        version: z.number(),
-        value: z.unknown().nullable()
-    }).nullable()
-})
-
-export type UpdateSessionBody = z.infer<typeof UpdateSessionBodySchema>
-
-export const UpdateMachineBodySchema = z.object({
-    t: z.literal('update-machine'),
-    machineId: z.string(),
-    metadata: z.object({
-        version: z.number(),
-        value: z.unknown()
-    }).nullable(),
-    runnerState: z.object({
-        version: z.number(),
-        value: z.unknown().nullable()
-    }).nullable()
-})
-
-export type UpdateMachineBody = z.infer<typeof UpdateMachineBodySchema>
-
-export const UpdateSchema = z.object({
-    id: z.string(),
-    seq: z.number(),
-    body: z.union([UpdateNewMessageBodySchema, UpdateSessionBodySchema, UpdateMachineBodySchema]),
-    createdAt: z.number()
-})
-
-export type Update = z.infer<typeof UpdateSchema>
 
 export const CliMessagesResponseSchema = z.object({
     messages: z.array(z.object({
@@ -210,85 +147,3 @@ export type AgentMessage = z.infer<typeof AgentMessageSchema>
 export const MessageContentSchema = z.union([UserMessageSchema, AgentMessageSchema])
 
 export type MessageContent = z.infer<typeof MessageContentSchema>
-
-export type SocketErrorReason = 'namespace-missing' | 'access-denied' | 'not-found'
-
-export interface ServerToClientEvents {
-    update: (data: Update) => void
-    'rpc-request': (data: { method: string; params: string }, callback: (response: string) => void) => void
-    'terminal:open': (data: TerminalOpenPayload) => void
-    'terminal:write': (data: TerminalWritePayload) => void
-    'terminal:resize': (data: TerminalResizePayload) => void
-    'terminal:close': (data: TerminalClosePayload) => void
-    error: (data: { message: string; code?: SocketErrorReason; scope?: 'session' | 'machine'; id?: string }) => void
-}
-
-export interface ClientToServerEvents {
-    message: (data: { sid: string; message: unknown; localId?: string }) => void
-    'session-alive': (data: {
-        sid: string
-        time: number
-        thinking: boolean
-        mode?: 'local' | 'remote'
-        permissionMode?: SessionPermissionMode
-        modelMode?: SessionModelMode
-    }) => void
-    'session-end': (data: { sid: string; time: number }) => void
-    'update-metadata': (data: { sid: string; expectedVersion: number; metadata: unknown }, cb: (answer: {
-        result: 'error'
-        reason?: SocketErrorReason
-    } | {
-        result: 'version-mismatch'
-        version: number
-        metadata: unknown | null
-    } | {
-        result: 'success'
-        version: number
-        metadata: unknown | null
-    }) => void) => void
-    'update-state': (data: { sid: string; expectedVersion: number; agentState: unknown | null }, cb: (answer: {
-        result: 'error'
-        reason?: SocketErrorReason
-    } | {
-        result: 'version-mismatch'
-        version: number
-        agentState: unknown | null
-    } | {
-        result: 'success'
-        version: number
-        agentState: unknown | null
-    }) => void) => void
-    'machine-alive': (data: { machineId: string; time: number }) => void
-    'machine-update-metadata': (data: { machineId: string; expectedVersion: number; metadata: unknown }, cb: (answer: {
-        result: 'error'
-        reason?: SocketErrorReason
-    } | {
-        result: 'version-mismatch'
-        version: number
-        metadata: unknown | null
-    } | {
-        result: 'success'
-        version: number
-        metadata: unknown | null
-    }) => void) => void
-    'machine-update-state': (data: { machineId: string; expectedVersion: number; runnerState: unknown | null }, cb: (answer: {
-        result: 'error'
-        reason?: SocketErrorReason
-    } | {
-        result: 'version-mismatch'
-        version: number
-        runnerState: unknown | null
-    } | {
-        result: 'success'
-        version: number
-        runnerState: unknown | null
-    }) => void) => void
-    'rpc-register': (data: { method: string }) => void
-    'rpc-unregister': (data: { method: string }) => void
-    'terminal:ready': (data: TerminalReadyPayload) => void
-    'terminal:output': (data: TerminalOutputPayload) => void
-    'terminal:exit': (data: TerminalExitPayload) => void
-    'terminal:error': (data: TerminalErrorPayload) => void
-    ping: (callback: () => void) => void
-    'usage-report': (data: unknown) => void
-}

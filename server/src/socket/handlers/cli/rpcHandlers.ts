@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { RpcRegistry } from '../../rpcRegistry'
-import type { SocketWithData } from '../../socketTypes'
+import type { CliSocketWithData } from '../../socketTypes'
 
 const rpcRegisterSchema = z.object({
     method: z.string().min(1)
@@ -10,7 +10,7 @@ const rpcUnregisterSchema = z.object({
     method: z.string().min(1)
 })
 
-export function registerRpcHandlers(socket: SocketWithData, rpcRegistry: RpcRegistry): void {
+export function registerRpcHandlers(socket: CliSocketWithData, rpcRegistry: RpcRegistry): void {
     socket.on('rpc-register', (data: unknown) => {
         const parsed = rpcRegisterSchema.safeParse(data)
         if (!parsed.success) {

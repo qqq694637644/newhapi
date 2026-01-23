@@ -3,9 +3,9 @@ import type {
     TerminalErrorPayload,
     TerminalExitPayload,
     TerminalOutputPayload,
-    TerminalReadyPayload,
-    TerminalSession
-} from './types'
+    TerminalReadyPayload
+} from '@hapi/protocol'
+import type { TerminalSession } from './types'
 
 type TerminalRuntime = TerminalSession & {
     proc: Bun.Subprocess

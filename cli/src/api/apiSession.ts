@@ -8,17 +8,21 @@ import { backoff } from '@/utils/time'
 import { AsyncLock } from '@/utils/lock'
 import type { RawJSONLines } from '@/claude/types'
 import { configuration } from '@/configuration'
+import type { ClientToServerEvents, ServerToClientEvents, Update } from '@hapi/protocol'
+import {
+    TerminalClosePayloadSchema,
+    TerminalOpenPayloadSchema,
+    TerminalResizePayloadSchema,
+    TerminalWritePayloadSchema
+} from '@hapi/protocol'
 import type {
     AgentState,
-    ClientToServerEvents,
     MessageContent,
     MessageMeta,
     Metadata,
-    ServerToClientEvents,
     Session,
     SessionModelMode,
     SessionPermissionMode,
-    Update,
     UserMessage
 } from './types'
 import { AgentStateSchema, CliMessagesResponseSchema, MetadataSchema, UserMessageSchema } from './types'
@@ -26,12 +30,6 @@ import { RpcHandlerManager } from './rpc/RpcHandlerManager'
 import { registerCommonHandlers } from '../modules/common/registerCommonHandlers'
 import { cleanupUploadDir } from '../modules/common/handlers/uploads'
 import { TerminalManager } from '@/terminal/TerminalManager'
-import {
-    TerminalClosePayloadSchema,
-    TerminalOpenPayloadSchema,
-    TerminalResizePayloadSchema,
-    TerminalWritePayloadSchema
-} from '@/terminal/types'
 import { applyVersionedAck } from './versionedUpdate'
 
 export class ApiSessionClient extends EventEmitter {
