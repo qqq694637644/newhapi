@@ -1,11 +1,11 @@
 /**
  * API functions for voice assistant integration.
  *
- * Fetches conversation tokens from the server for ElevenLabs integration.
- * The server handles authentication with ElevenLabs API, keeping credentials secure.
+ * Fetches conversation tokens from the hub for ElevenLabs integration.
+ * The hub handles authentication with ElevenLabs API, keeping credentials secure.
  *
  * Supports two modes:
- * 1. Default: Server uses its own ElevenLabs credentials (production)
+ * 1. Default: Hub uses its own ElevenLabs credentials (production)
  * 2. Custom: Client provides their own ElevenLabs agent ID and API key
  */
 
@@ -29,11 +29,11 @@ export interface VoiceTokenRequest {
 }
 
 /**
- * Fetch a conversation token from the server for ElevenLabs voice sessions.
+ * Fetch a conversation token from the hub for ElevenLabs voice sessions.
  *
  * This uses the private agent flow where:
- * 1. Server holds the ELEVENLABS_API_KEY and ELEVENLABS_AGENT_ID (or uses user-provided ones)
- * 2. Server fetches a short-lived conversation token from ElevenLabs
+ * 1. Hub holds the ELEVENLABS_API_KEY and ELEVENLABS_AGENT_ID (or uses user-provided ones)
+ * 2. Hub fetches a short-lived conversation token from ElevenLabs
  * 3. Client uses this token to establish WebRTC connection
  */
 export async function fetchVoiceToken(

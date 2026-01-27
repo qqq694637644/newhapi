@@ -2,8 +2,8 @@
  * Sync Engine for HAPI Telegram Bot (Direct Connect)
  *
  * In the direct-connect architecture:
- * - hapi-server is the server (Socket.IO + REST)
- * - hapi CLI connects directly to the server (no relay)
+ * - hapi-hub is the hub (Socket.IO + REST)
+ * - hapi CLI connects directly to the hub (no relay)
  * - No E2E encryption; data is stored as JSON in SQLite
  */
 

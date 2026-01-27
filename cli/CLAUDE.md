@@ -2,10 +2,10 @@
 
 ## Project Overview
 
-HAPI CLI (`hapi`) is a command-line tool that wraps Claude Code to enable remote control and session sharing via `hapi-server` (Telegram Bot + Mini App). It's part of a two-component system:
+HAPI CLI (`hapi`) is a command-line tool that wraps Claude Code to enable remote control and session sharing via `hapi-hub` (Telegram Bot + Mini App). It's part of a two-component system:
 
 1. **hapi** (this project) - CLI wrapper for Claude Code
-2. **hapi-server** - Public server (Socket.IO + REST + SQLite) + Telegram Mini App
+2. **hapi-hub** - Hub service (Socket.IO + REST + SQLite) + Telegram Mini App
 
 ## Code Style Preferences
 
@@ -96,29 +96,29 @@ User interface components.
 ## Data Flow
 
 1. **Authentication**: 
-   - Use `CLI_API_TOKEN` to authenticate to `hapi-server` (REST + Socket.IO)
+   - Use `CLI_API_TOKEN` to authenticate to `hapi-hub` (REST + Socket.IO)
 
 2. **Session Creation**:
    - Create/load session via `POST /cli/sessions` → Establish Socket.IO `/cli` connection
 
 3. **Message Flow**:
-   - Local mode: terminal/SDK → hapi CLI → hapi-server → Telegram Mini App
+   - Local mode: terminal/SDK → hapi CLI → hapi-hub → Telegram Mini App
 
 4. **Permission Handling**:
-   - Claude requests permission → hapi CLI exposes RPC handlers → Mini App calls REST → hapi-server relays RPC to hapi CLI
+   - Claude requests permission → hapi CLI exposes RPC handlers → Mini App calls REST → hapi-hub relays RPC to hapi CLI
 
 ## Key Design Decisions
 
 1. **File-based logging**: Prevents interference with Claude's terminal UI
 2. **Dual Claude integration**: Process spawning for interactive, SDK for remote
-3. **No E2E encryption**: Use HTTPS/TLS for `hapi-server` deployments
+3. **No E2E encryption**: Use HTTPS/TLS for `hapi-hub` deployments
 4. **Session persistence**: Allows resuming sessions across restarts
 5. **Optimistic concurrency**: Handles distributed state updates gracefully
 
 ## Security Considerations
 
 - `CLI_API_TOKEN` is a shared secret; treat it like a password.
-- No end-to-end encryption: use HTTPS/TLS for `hapi-server` deployments.
+- No end-to-end encryption: use HTTPS/TLS for `hapi-hub` deployments.
 - Session isolation through unique session IDs.
 
 ## Dependencies

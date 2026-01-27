@@ -16,8 +16,8 @@ React Mini App / PWA for monitoring and controlling hapi sessions.
 
 - When opened inside Telegram, auth uses Telegram WebApp init data.
 - When opened in a normal browser, you can log in with `CLI_API_TOKEN:<namespace>` (or `CLI_API_TOKEN` for the default namespace).
-- The login screen includes a top-right server picker; if unset, the app uses the same origin it was loaded from.
-- Live updates come from the server via SSE.
+- The login screen includes a top-right hub picker; if unset, the app uses the same origin it was loaded from.
+- Live updates come from the hub via SSE.
 
 ## Routes
 
@@ -122,11 +122,11 @@ If testing in Telegram, set:
 bun run build:web
 ```
 
-The built assets land in `web/dist` and are served by hapi-server. The single executable can embed these assets.
+The built assets land in `web/dist` and are served by hapi-hub. The single executable can embed these assets.
 
 ## Standalone hosting
 
-You can host `web/dist` on a static host (GitHub Pages, Cloudflare Pages) and point it at any hapi server:
+You can host `web/dist` on a static host (GitHub Pages, Cloudflare Pages) and point it at any hapi hub:
 
 1. Build the web app. If your static host uses a subpath, set the Vite base:
 
@@ -135,7 +135,7 @@ bun run build:web -- --base /<repo>/
 ```
 
 2. Deploy `web/dist` to your static host.
-3. Set server CORS to allow the static origin (`HAPI_PUBLIC_URL` or `CORS_ORIGINS`).
-4. Open the static site, click the top-right Server button on the login screen, and enter the hapi server origin.
+3. Set hub CORS to allow the static origin (`HAPI_PUBLIC_URL` or `CORS_ORIGINS`).
+4. Open the static site, click the top-right Hub button on the login screen, and enter the hapi hub origin.
 
-Clear the server override in the same dialog to return to same-origin behavior.
+Clear the hub override in the same dialog to return to same-origin behavior.

@@ -1,7 +1,7 @@
 /**
- * Server Settings Management
+ * Hub Settings Management
  *
- * Handles loading and persistence of server configuration.
+ * Handles loading and persistence of hub configuration.
  * Priority: environment variable > settings.json > default value
  *
  * When a value is loaded from environment variable and not present in settings.json,
@@ -69,7 +69,7 @@ function deriveCorsOrigins(publicUrl: string): string[] {
 }
 
 /**
- * Load server settings with priority: env > file > default
+ * Load hub settings with priority: env > file > default
  * Saves new env values to file when not already present
  */
 export async function loadServerSettings(dataDir: string): Promise<ServerSettingsResult> {

@@ -1,5 +1,5 @@
 /**
- * Configuration for hapi-server (Direct Connect)
+ * Configuration for hapi-hub (Direct Connect)
  *
  * Configuration is loaded with priority: environment variable > settings.json > default
  * When values are read from environment variables and not present in settings.json,
@@ -9,8 +9,8 @@
  * - CLI_API_TOKEN: Shared secret for hapi CLI authentication (auto-generated if not set)
  * - TELEGRAM_BOT_TOKEN: Telegram Bot API token from @BotFather
  * - TELEGRAM_NOTIFICATION: Enable/disable Telegram notifications (default: true)
- * - HAPI_LISTEN_HOST: Host/IP to bind the HTTP server (default: 127.0.0.1)
- * - HAPI_LISTEN_PORT: Port for HTTP server (default: 3006)
+ * - HAPI_LISTEN_HOST: Host/IP to bind the HTTP service (default: 127.0.0.1)
+ * - HAPI_LISTEN_PORT: Port for HTTP service (default: 3006)
  * - HAPI_PUBLIC_URL: Public URL for external access (e.g., Telegram Mini App)
  * - CORS_ORIGINS: Comma-separated CORS origins
  * - HAPI_RELAY_API: Relay API domain for tunwg (default: relay.hapi.run)
@@ -68,10 +68,10 @@ class Configuration {
     /** SQLite DB path */
     public readonly dbPath: string
 
-    /** Port for the HTTP server */
+    /** Port for the HTTP service */
     public readonly listenPort: number
 
-    /** Host/IP to bind the HTTP server to */
+    /** Host/IP to bind the HTTP service to */
     public readonly listenHost: string
 
     /** Public URL for external access (e.g., Telegram Mini App) */
@@ -136,11 +136,11 @@ class Configuration {
             ? process.env.DB_PATH.replace(/^~/, homedir())
             : join(dataDir, 'hapi.db')
 
-        // 3. Load server settings (with persistence)
+        // 3. Load hub settings (with persistence)
         const settingsResult = await loadServerSettings(dataDir)
 
         if (settingsResult.savedToFile) {
-            console.log(`[Server] Configuration saved to ${getSettingsFile(dataDir)}`)
+            console.log(`[Hub] Configuration saved to ${getSettingsFile(dataDir)}`)
         }
 
         // 4. Create configuration instance

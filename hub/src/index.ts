@@ -1,5 +1,5 @@
 /**
- * HAPI Server - Main Entry Point
+ * HAPI Hub - Main Entry Point
  *
  * Provides:
  * - Web app + HTTP API
@@ -106,7 +106,7 @@ let notificationHub: NotificationHub | null = null
 let tunnelManager: TunnelManager | null = null
 
 async function main() {
-    console.log('HAPI Server starting...')
+    console.log('HAPI Hub starting...')
 
     // Load configuration (async - loads from env/file with persistence)
     const relayApiDomain = process.env.HAPI_RELAY_API || 'relay.hapi.run'
@@ -133,28 +133,28 @@ async function main() {
         console.log('='.repeat(70))
         console.log('')
     } else {
-        console.log(`[Server] CLI_API_TOKEN: loaded from ${formatSource(config.sources.cliApiToken)}`)
+        console.log(`[Hub] CLI_API_TOKEN: loaded from ${formatSource(config.sources.cliApiToken)}`)
     }
 
     // Display other configuration sources
-    console.log(`[Server] HAPI_LISTEN_HOST: ${config.listenHost} (${formatSource(config.sources.listenHost)})`)
-    console.log(`[Server] HAPI_LISTEN_PORT: ${config.listenPort} (${formatSource(config.sources.listenPort)})`)
-    console.log(`[Server] HAPI_PUBLIC_URL: ${config.publicUrl} (${formatSource(config.sources.publicUrl)})`)
+    console.log(`[Hub] HAPI_LISTEN_HOST: ${config.listenHost} (${formatSource(config.sources.listenHost)})`)
+    console.log(`[Hub] HAPI_LISTEN_PORT: ${config.listenPort} (${formatSource(config.sources.listenPort)})`)
+    console.log(`[Hub] HAPI_PUBLIC_URL: ${config.publicUrl} (${formatSource(config.sources.publicUrl)})`)
 
     if (!config.telegramEnabled) {
-        console.log('[Server] Telegram: disabled (no TELEGRAM_BOT_TOKEN)')
+        console.log('[Hub] Telegram: disabled (no TELEGRAM_BOT_TOKEN)')
     } else {
         const tokenSource = formatSource(config.sources.telegramBotToken)
-        console.log(`[Server] Telegram: enabled (${tokenSource})`)
+        console.log(`[Hub] Telegram: enabled (${tokenSource})`)
         const notificationSource = formatSource(config.sources.telegramNotification)
-        console.log(`[Server] Telegram notifications: ${config.telegramNotification ? 'enabled' : 'disabled'} (${notificationSource})`)
+        console.log(`[Hub] Telegram notifications: ${config.telegramNotification ? 'enabled' : 'disabled'} (${notificationSource})`)
     }
 
     // Display tunnel status
     if (relayFlag.enabled) {
-        console.log(`[Server] Tunnel: enabled (${relayFlag.source}), API: ${relayApiDomain}`)
+        console.log(`[Hub] Tunnel: enabled (${relayFlag.source}), API: ${relayApiDomain}`)
     } else {
-        console.log(`[Server] Tunnel: disabled (${relayFlag.source})`)
+        console.log(`[Hub] Tunnel: disabled (${relayFlag.source})`)
     }
 
     const store = new Store(config.dbPath)
@@ -204,7 +204,7 @@ async function main() {
 
     notificationHub = new NotificationHub(syncEngine, notificationChannels)
 
-    // Start HTTP server first (before tunnel, so tunnel has something to forward to)
+    // Start HTTP service first (before tunnel, so tunnel has something to forward to)
     webServer = await startWebServer({
         getSyncEngine: () => syncEngine,
         getSseManager: () => sseManager,
@@ -224,10 +224,10 @@ async function main() {
     }
 
     console.log('')
-    console.log('[Web] Server listening on :' + config.listenPort)
+    console.log('[Web] Hub listening on :' + config.listenPort)
     console.log('[Web] Local:  http://localhost:' + config.listenPort)
 
-    // Initialize tunnel AFTER web server is ready
+    // Initialize tunnel AFTER web service is ready
     let tunnelUrl: string | null = null
     if (relayFlag.enabled) {
         tunnelManager = new TunnelManager({
@@ -242,7 +242,7 @@ async function main() {
             tunnelUrl = await tunnelManager.start()
         } catch (error) {
             console.error('[Tunnel] Failed to start:', error instanceof Error ? error.message : error)
-            console.log('[Tunnel] Server continuing without tunnel. Restart without --relay to disable.')
+            console.log('[Tunnel] Hub continuing without tunnel. Restart without --relay to disable.')
         }
     }
 
@@ -257,9 +257,9 @@ async function main() {
 
             console.log('[Web] Public: ' + tunnelUrl)
 
-            // Generate direct access link with server and token
+            // Generate direct access link with hub and token
             const params = new URLSearchParams({
-                server: tunnelUrl,
+                hub: tunnelUrl,
                 token: config.cliApiToken
             })
             const directAccessUrl = `${officialWebUrl}/?${params.toString()}`
@@ -288,7 +288,7 @@ async function main() {
         void announceTunnelAccess()
     }
     console.log('')
-    console.log('HAPI Server is ready!')
+    console.log('HAPI Hub is ready!')
 
     // Handle shutdown
     const shutdown = async () => {

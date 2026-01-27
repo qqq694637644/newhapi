@@ -11,8 +11,8 @@
  * 
  * The integration test environment uses .env.integration-test which sets:
  * - HAPI_HOME=~/.hapi-dev-test (DIFFERENT from dev's ~/.hapi-dev!)
- * - HAPI_API_URL=http://localhost:3006 (local hapi-server)
- * - CLI_API_TOKEN=... (must match the server)
+ * - HAPI_API_URL=http://localhost:3006 (local hapi-hub)
+ * - CLI_API_TOKEN=... (must match the hub)
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
@@ -48,7 +48,7 @@ async function waitFor(
   throw new Error('Timeout waiting for condition');
 }
 
-// Check if dev server is running and properly configured
+// Check if dev hub is running and properly configured
 async function isServerHealthy(): Promise<boolean> {
   try {
     if (!configuration.cliApiToken) {

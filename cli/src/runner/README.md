@@ -280,7 +280,7 @@ All data is plain JSON over TLS; authentication is `CLI_API_TOKEN` (no end-to-en
 
 ### Test Environment
 - Requires `.env.integration-test`
-- Uses local hapi-server (http://localhost:3006)
+- Uses local hapi-hub (http://localhost:3006)
 - Separate `~/.hapi-dev-test` home directory
 
 ### Key Test Scenarios
@@ -296,7 +296,7 @@ All data is plain JSON over TLS; authentication is `CLI_API_TOKEN` (no end-to-en
 
 # Machine Sync Architecture - Separated Metadata & Runner State
 
-> Direct-connect note: the "server" is `hapi-server`, payloads are plain JSON (no base64/encryption),
+> Direct-connect note: the "hub" is `hapi-hub`, payloads are plain JSON (no base64/encryption),
 > and authentication uses `CLI_API_TOKEN` (REST `Authorization: Bearer ...` + Socket.IO `handshake.auth.token`).
 
 ## Data Structure (Similar to Session's metadata + agentState)
@@ -327,7 +327,7 @@ interface RunnerState {
 
 Checks if machine ID exists in settings:
 - If not: creates ID locally only (so sessions can reference it)
-- Does NOT create machine on server - that's runner's job
+- Does NOT create machine on hub - that's runner's job
 - CLI doesn't manage machine details - all API & schema live in runner subpackage
 
 ## 2. Runner Startup - Initial Registration
@@ -444,10 +444,10 @@ socket.emit('machine-update-metadata', {
 }, callback)
 ```
 
-## 5. Mini App RPC Calls (via hapi-server)
+## 5. Mini App RPC Calls (via hapi-hub)
 
-The Telegram Mini App calls REST endpoints on `hapi-server` (for example `POST /api/machines/:id/spawn`).
-`hapi-server` then relays those requests to the runner via Socket.IO `rpc-request` on the `/cli` namespace.
+The Telegram Mini App calls REST endpoints on `hapi-hub` (for example `POST /api/machines/:id/spawn`).
+`hapi-hub` then relays those requests to the runner via Socket.IO `rpc-request` on the `/cli` namespace.
 
 RPC method naming (machine-scoped) uses a `${machineId}:` prefix, for example:
 - `${machineId}:spawn-happy-session`

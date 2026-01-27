@@ -8,7 +8,7 @@ import { geminiCommand } from './gemini'
 import { hookForwarderCommand } from './hookForwarder'
 import { mcpCommand } from './mcp'
 import { notifyCommand } from './notify'
-import { serverCommand } from './server'
+import { hubCommand } from './hub'
 import type { CommandContext, CommandDefinition } from './types'
 
 const COMMANDS: CommandDefinition[] = [
@@ -17,7 +17,8 @@ const COMMANDS: CommandDefinition[] = [
     codexCommand,
     geminiCommand,
     mcpCommand,
-    serverCommand,
+    hubCommand,
+    { ...hubCommand, name: 'server' },
     hookForwarderCommand,
     doctorCommand,
     runnerCommand,

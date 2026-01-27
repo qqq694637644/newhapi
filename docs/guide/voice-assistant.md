@@ -24,16 +24,16 @@ An [ElevenLabs](https://elevenlabs.io) account with API access
 2. Go to [API Keys](https://elevenlabs.io/app/settings/api-keys) in your account settings
 3. Create a new API key and copy it
 
-### 2. Configure the Server
+### 2. Configure the Hub
 
-Set the environment variable before starting the server:
+Set the environment variable before starting the hub:
 
 ```bash
 export ELEVENLABS_API_KEY="your-api-key"
-hapi server --relay
+hapi hub --relay
 ```
 
-The server automatically creates a "Hapi Voice Assistant" agent in your ElevenLabs account on first use.
+The hub automatically creates a "Hapi Voice Assistant" agent in your ElevenLabs account on first use.
 
 ### 3. (Optional) Custom Agent
 
@@ -85,10 +85,10 @@ The voice assistant has two tools to interact with your coding agent:
 ### Architecture
 
 ```
-Browser → WebRTC → ElevenLabs ConvAI → Voice Assistant → HAPI Server → Coding Agent
+Browser → WebRTC → ElevenLabs ConvAI → Voice Assistant → HAPI Hub → Coding Agent
 ```
 
-The voice connection uses WebRTC for low-latency audio streaming. The HAPI server provides conversation tokens and handles authentication.
+The voice connection uses WebRTC for low-latency audio streaming. The HAPI hub provides conversation tokens and handles authentication.
 
 ## Tips
 
@@ -101,7 +101,7 @@ The voice connection uses WebRTC for low-latency audio streaming. The HAPI serve
 
 ### "ElevenLabs API key not configured"
 
-Set `ELEVENLABS_API_KEY` in your environment and restart the server.
+Set `ELEVENLABS_API_KEY` in your environment and restart the hub.
 
 ### "Failed to get microphone permission"
 

@@ -161,7 +161,7 @@ export function LoginPrompt(props: LoginPromptProps) {
                         <Dialog open={isServerDialogOpen} onOpenChange={setIsServerDialogOpen}>
                             <DialogTrigger asChild>
                                 <button type="button" className="underline hover:text-[var(--app-fg)]">
-                                    Server {props.serverUrl ? `${t('login.server.custom')}` : `${t('login.server.default')}`}
+                                    Hub {props.serverUrl ? `${t('login.server.custom')}` : `${t('login.server.default')}`}
                                 </button>
                             </DialogTrigger>
                             <DialogContent className="max-w-md">

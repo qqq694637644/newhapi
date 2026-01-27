@@ -20,9 +20,11 @@ https://github.com/user-attachments/assets/38230353-94c6-4dbe-9c29-b2a2cc457546
 ## Getting Started
 
 ```bash
-npx @twsxtd/hapi server --relay  # start server with E2E encrypted relay
+npx @twsxtd/hapi hub --relay     # start hub with E2E encrypted relay
 npx @twsxtd/hapi                 # run claude code
 ```
+
+`hapi server` remains supported as an alias.
 
 The terminal will display a URL and QR code. Scan the QR code with your phone or open the URL to access.
 

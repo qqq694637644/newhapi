@@ -133,10 +133,11 @@ function AppInner() {
         if (!token || !api) return
         const { pathname, search, hash, state } = router.history.location
         const searchParams = new URLSearchParams(search)
-        if (!searchParams.has('server') && !searchParams.has('token')) {
+        if (!searchParams.has('server') && !searchParams.has('hub') && !searchParams.has('token')) {
             return
         }
         searchParams.delete('server')
+        searchParams.delete('hub')
         searchParams.delete('token')
         const nextSearch = searchParams.toString()
         const nextHref = `${pathname}${nextSearch ? `?${nextSearch}` : ''}${hash}`

@@ -1,6 +1,6 @@
-# hapi-server
+# hapi-hub
 
-Telegram bot + HTTP API + realtime updates for hapi.
+Telegram bot + HTTP API + realtime updates for hapi hub.
 
 ## What it does
 
@@ -46,18 +46,20 @@ export TELEGRAM_BOT_TOKEN="..."
 export CLI_API_TOKEN="shared-secret"
 export HAPI_PUBLIC_URL="https://your-domain.example"
 
-hapi server
+hapi hub
 ```
 
+`hapi server` remains supported as an alias.
+
 If you only need web + CLI, you can omit TELEGRAM_BOT_TOKEN.
-To enable Telegram, set TELEGRAM_BOT_TOKEN and HAPI_PUBLIC_URL, start the server, open `/app`
+To enable Telegram, set TELEGRAM_BOT_TOKEN and HAPI_PUBLIC_URL, start the hub, open `/app`
 in the bot chat, and bind the Mini App with `CLI_API_TOKEN:<namespace>` when prompted.
 
 From source:
 
 ```bash
 bun install
-bun run dev:server
+bun run dev:hub
 ```
 
 ## HTTP API
@@ -122,7 +124,7 @@ See `src/socket/handlers/cli.ts` for event handlers.
 
 Namespace: `/cli`
 
-### Client events (CLI to server)
+### Client events (CLI to hub)
 
 - `message` - Send message to session.
 - `update-metadata` - Update session metadata.
@@ -133,7 +135,7 @@ Namespace: `/cli`
 - `rpc-register` - Register RPC handler.
 - `rpc-unregister` - Unregister RPC handler.
 
-### Server events (server to clients)
+### Hub events (hub to clients)
 
 - `update` - Broadcast session/message updates.
 - `rpc-request` - Incoming RPC call.
@@ -181,7 +183,7 @@ See `src/store/index.ts` for SQLite persistence:
 
 ## Source structure
 
-- `src/web/` - HTTP server and routes.
+- `src/web/` - HTTP service and routes.
 - `src/socket/` - Socket.IO setup and handlers.
 - `src/telegram/` - Telegram bot.
 - `src/sync/` - Core session/message logic.
@@ -194,30 +196,30 @@ Access is controlled by:
 - Telegram initData verification plus bound Telegram users (bound via `CLI_API_TOKEN:<namespace>`).
 - `CLI_API_TOKEN` base secret for CLI and browser access (namespace is appended by clients).
 
-Transport security depends on HTTPS in front of the server.
+Transport security depends on HTTPS in front of the hub.
 
 ## Build for deployment
 
 From the repo root:
 
 ```bash
-bun run build:server
+bun run build:hub
 bun run build:web
 ```
 
-The server build output is `server/dist/index.js`, and the web assets are in `web/dist`.
+The hub build output is `hub/dist/index.js`, and the web assets are in `web/dist`.
 
 ## Networking notes
 
-- Telegram Mini Apps require HTTPS and a public URL. If the server has no public IP, use Cloudflare Tunnel or Tailscale and set `HAPI_PUBLIC_URL` to the HTTPS endpoint.
+- Telegram Mini Apps require HTTPS and a public URL. If the hub has no public IP, use Cloudflare Tunnel or Tailscale and set `HAPI_PUBLIC_URL` to the HTTPS endpoint.
 - If the web app is hosted on a different origin, set `CORS_ORIGINS` (or `HAPI_PUBLIC_URL`) to include that static host origin.
 
 ## Standalone web hosting
 
-The web UI can be hosted separately from the server (for example on GitHub Pages or Cloudflare Pages):
+The web UI can be hosted separately from the hub (for example on GitHub Pages or Cloudflare Pages):
 
 1. Build and deploy `web/dist` from the repo root.
 2. Set `CORS_ORIGINS` (or `HAPI_PUBLIC_URL`) to the static host origin.
-3. Open the static site, click the Server button on the login screen, and enter the hapi server origin.
+3. Open the static site, click the Hub button on the login screen, and enter the hapi hub origin.
 
-Leaving the server override empty preserves the default same-origin behavior when the server serves the web assets directly.
+Leaving the hub override empty preserves the default same-origin behavior when the hub serves the web assets directly.

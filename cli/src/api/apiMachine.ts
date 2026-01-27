@@ -1,5 +1,5 @@
 /**
- * WebSocket client for machine/runner communication with hapi-server
+ * WebSocket client for machine/runner communication with hapi-hub
  */
 
 import { io, type Socket } from 'socket.io-client'

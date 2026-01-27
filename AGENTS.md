@@ -6,13 +6,13 @@ Short guide for AI agents in this repo. Prefer progressive loading: start with t
 
 ## Repo layout
 - `cli/` - hapi CLI, runner, Codex/MCP tooling
-- `server/` - Telegram bot + HTTP API + Socket.IO + SSE
+- `hub/` - Telegram bot + HTTP API + Socket.IO + SSE
 - `web/` - React Mini App / PWA
 
 ## Reference docs
 - `README.md` (user overview)
 - `cli/README.md` (CLI behavior and config)
-- `server/README.md` (server setup and architecture)
+- `hub/README.md` (hub setup and architecture)
 - `web/README.md` (web app behavior and dev workflow)
 - `localdocs/` (optional deep dives)
 
@@ -30,7 +30,7 @@ Short guide for AI agents in this repo. Prefer progressive loading: start with t
 
 ## Key source dirs
 - `cli/src/api/`, `cli/src/claude/`, `cli/src/commands/`, `cli/src/codex/`
-- `server/src/web/`, `server/src/socket/`, `server/src/telegram/`, `server/src/sync/`
+- `hub/src/web/`, `hub/src/socket/`, `hub/src/telegram/`, `hub/src/sync/`
 - `web/src/components/`, `web/src/api/`, `web/src/hooks/`
 
 ## Critical Thinking

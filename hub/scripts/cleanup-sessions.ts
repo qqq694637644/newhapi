@@ -9,7 +9,7 @@
  * - Orphaned: Delete sessions whose path no longer exists
  *
  * Usage:
- *   bun run server/scripts/cleanup-sessions.ts [options]
+ *   bun run hub/scripts/cleanup-sessions.ts [options]
  *
  * Options:
  *   --min-messages=N   Delete sessions with fewer than N messages (default: 5)
@@ -20,12 +20,12 @@
  *   --help             Show this help message
  *
  * Examples:
- *   bun run server/scripts/cleanup-sessions.ts
- *   bun run server/scripts/cleanup-sessions.ts --min-messages=3
- *   bun run server/scripts/cleanup-sessions.ts --path="/tmp/*"
- *   bun run server/scripts/cleanup-sessions.ts --message="hello"
- *   bun run server/scripts/cleanup-sessions.ts --orphaned
- *   bun run server/scripts/cleanup-sessions.ts --orphaned --min-messages=5 --force
+ *   bun run hub/scripts/cleanup-sessions.ts
+ *   bun run hub/scripts/cleanup-sessions.ts --min-messages=3
+ *   bun run hub/scripts/cleanup-sessions.ts --path="/tmp/*"
+ *   bun run hub/scripts/cleanup-sessions.ts --message="hello"
+ *   bun run hub/scripts/cleanup-sessions.ts --orphaned
+ *   bun run hub/scripts/cleanup-sessions.ts --orphaned --min-messages=5 --force
  */
 
 import { Database } from 'bun:sqlite'
@@ -322,7 +322,7 @@ async function main(): Promise<void> {
 
     if (help) {
         console.log(`
-Usage: bun run server/scripts/cleanup-sessions.ts [options]
+Usage: bun run hub/scripts/cleanup-sessions.ts [options]
 
 Options:
   --min-messages=N   Delete sessions with fewer than N messages (default: 5)
@@ -340,12 +340,12 @@ Filtering logic:
   - Multiple filters: Delete sessions matching ALL conditions (AND)
 
 Examples:
-  bun run server/scripts/cleanup-sessions.ts
-  bun run server/scripts/cleanup-sessions.ts --min-messages=3
-  bun run server/scripts/cleanup-sessions.ts --path="/tmp/*"
-  bun run server/scripts/cleanup-sessions.ts --message="hello"
-  bun run server/scripts/cleanup-sessions.ts --orphaned
-  bun run server/scripts/cleanup-sessions.ts --orphaned --min-messages=5 --force
+  bun run hub/scripts/cleanup-sessions.ts
+  bun run hub/scripts/cleanup-sessions.ts --min-messages=3
+  bun run hub/scripts/cleanup-sessions.ts --path="/tmp/*"
+  bun run hub/scripts/cleanup-sessions.ts --message="hello"
+  bun run hub/scripts/cleanup-sessions.ts --orphaned
+  bun run hub/scripts/cleanup-sessions.ts --orphaned --min-messages=5 --force
 `)
         process.exit(0)
     }

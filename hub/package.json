@@ -1,5 +1,5 @@
 {
-    "name": "hapi-server",
+    "name": "hapi-hub",
     "private": true,
     "version": "0.1.0",
     "description": "Telegram Bot client for HAPI - control Claude Code sessions",

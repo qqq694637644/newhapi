@@ -1,7 +1,7 @@
 import chalk from 'chalk'
 import type { CommandDefinition, CommandContext } from './types'
 
-function parseServerArgs(args: string[]): { host?: string; port?: string } {
+function parseHubArgs(args: string[]): { host?: string; port?: string } {
     const result: { host?: string; port?: string } = {}
 
     for (let i = 0; i < args.length; i++) {
@@ -20,12 +20,12 @@ function parseServerArgs(args: string[]): { host?: string; port?: string } {
     return result
 }
 
-export const serverCommand: CommandDefinition = {
-    name: 'server',
+export const hubCommand: CommandDefinition = {
+    name: 'hub',
     requiresRuntimeAssets: true,
     run: async (context: CommandContext) => {
         try {
-            const { host, port } = parseServerArgs(context.commandArgs)
+            const { host, port } = parseHubArgs(context.commandArgs)
 
             if (host) {
                 process.env.WEBAPP_HOST = host
@@ -33,7 +33,7 @@ export const serverCommand: CommandDefinition = {
             if (port) {
                 process.env.WEBAPP_PORT = port
             }
-            await import('../../../server/src/index')
+            await import('../../../hub/src/index')
         } catch (error) {
             console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error')
             if (process.env.DEBUG) {

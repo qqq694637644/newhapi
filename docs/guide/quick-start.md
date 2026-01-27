@@ -22,13 +22,15 @@ npx @twsxtd/hapi
 
 Other install options: [Installation](./installation.md)
 
-## Start the server
+## Start the hub
 
 ```bash
-hapi server --relay
+hapi hub --relay
 ```
 
 On first run, HAPI prints an access token and saves it to `~/.hapi/settings.json`.
+
+`hapi server` remains supported as an alias.
 
 The terminal will display a URL and QR code for remote access.
 

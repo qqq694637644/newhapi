@@ -2,7 +2,7 @@
  * Download tunwg binaries for all platforms
  *
  * Downloads pre-built tunwg binaries from GitHub releases.
- * Output directory: server/tools/tunwg/
+ * Output directory: hub/tools/tunwg/
  */
 
 import { existsSync, mkdirSync, writeFileSync, chmodSync } from 'node:fs';

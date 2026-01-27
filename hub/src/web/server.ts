@@ -104,10 +104,10 @@ function createWebApp(options: {
         app.get('/', (c) => {
             return c.html(`<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><title>HAPI Server</title></head>
+<head><meta charset="utf-8"><title>HAPI Hub</title></head>
 <body style="font-family: system-ui; padding: 2rem; max-width: 600px;">
-<h1>HAPI Server</h1>
-<p>This server is running in relay mode. Please use the official web app:</p>
+<h1>HAPI Hub</h1>
+<p>This hub is running in relay mode. Please use the official web app:</p>
 <p><a href="${officialUrl}">${officialUrl}</a></p>
 <details>
 <summary>Why am I seeing this?</summary>
@@ -245,7 +245,7 @@ export async function startWebServer(options: {
         }
     })
 
-    console.log(`[Web] server listening on ${configuration.listenHost}:${configuration.listenPort}`)
+    console.log(`[Web] hub listening on ${configuration.listenHost}:${configuration.listenPort}`)
     console.log(`[Web] public URL: ${configuration.publicUrl}`)
 
     return server
