@@ -1,11 +1,9 @@
-import { logger } from '@/ui/logger';
 import { geminiLocal } from './geminiLocal';
 import { GeminiSession } from './session';
-import { Future } from '@/utils/future';
 import { createGeminiSessionScanner } from './utils/sessionScanner';
-import { getLocalLaunchExitReason } from '@/agent/localLaunchPolicy';
 import type { PermissionMode } from './types';
 import { randomUUID } from 'node:crypto';
+import { BaseLocalLauncher } from '@/modules/common/launcher/BaseLocalLauncher';
 
 type GeminiScannerHandle = Awaited<ReturnType<typeof createGeminiSessionScanner>>;
 
@@ -27,9 +25,31 @@ export async function geminiLocalLauncher(
         hookSettingsPath?: string;
     }
 ): Promise<'switch' | 'exit'> {
-    let exitReason: 'switch' | 'exit' | null = null;
-    const processAbortController = new AbortController();
-    const exitFuture = new Future<void>();
+    const launcher = new BaseLocalLauncher({
+        label: 'gemini-local',
+        failureLabel: 'Local Gemini process failed',
+        queue: session.queue,
+        rpcHandlerManager: session.client.rpcHandlerManager,
+        startedBy: session.startedBy,
+        startingMode: session.startingMode,
+        launch: async (abortSignal) => {
+            await geminiLocal({
+                path: session.path,
+                sessionId: session.sessionId,
+                abort: abortSignal,
+                model: opts.model,
+                approvalMode: mapApprovalMode(session.getPermissionMode() as PermissionMode | undefined),
+                allowedTools: opts.allowedTools,
+                hookSettingsPath: opts.hookSettingsPath
+            });
+        },
+        sendFailureMessage: (message) => {
+            session.sendSessionEvent({ type: 'message', message });
+        },
+        recordLocalLaunchFailure: (message, exitReason) => {
+            session.recordLocalLaunchFailure(message, exitReason);
+        }
+    });
 
     let scanner: GeminiScannerHandle | null = null;
 
@@ -71,88 +91,8 @@ export async function geminiLocalLauncher(
     }
 
     try {
-        const abortProcess = async () => {
-            if (!processAbortController.signal.aborted) {
-                processAbortController.abort();
-            }
-            await exitFuture.promise;
-        };
-
-        const doAbort = async () => {
-            logger.debug('[gemini-local]: abort requested');
-            if (!exitReason) {
-                exitReason = 'switch';
-            }
-            session.queue.reset();
-            await abortProcess();
-        };
-
-        const doSwitch = async () => {
-            logger.debug('[gemini-local]: switch requested');
-            if (!exitReason) {
-                exitReason = 'switch';
-            }
-            await abortProcess();
-        };
-
-        session.client.rpcHandlerManager.registerHandler('abort', doAbort);
-        session.client.rpcHandlerManager.registerHandler('switch', doSwitch);
-        session.queue.setOnMessage(() => {
-            void doSwitch();
-        });
-
-        if (session.queue.size() > 0) {
-            return 'switch';
-        }
-
-        while (true) {
-            if (exitReason) {
-                return exitReason;
-            }
-
-            logger.debug('[gemini-local]: launch');
-            try {
-                await geminiLocal({
-                    path: session.path,
-                    sessionId: session.sessionId,
-                    abort: processAbortController.signal,
-                    model: opts.model,
-                    approvalMode: mapApprovalMode(session.getPermissionMode() as PermissionMode | undefined),
-                    allowedTools: opts.allowedTools,
-                    hookSettingsPath: opts.hookSettingsPath
-                });
-
-                if (!exitReason) {
-                    exitReason = 'exit';
-                    break;
-                }
-            } catch (error) {
-                logger.debug('[gemini-local]: launch error', error);
-                const message = error instanceof Error ? error.message : String(error);
-                session.sendSessionEvent({
-                    type: 'message',
-                    message: `Local Gemini process failed: ${message}`
-                });
-                const failureExitReason = exitReason ?? getLocalLaunchExitReason({
-                    startedBy: session.startedBy,
-                    startingMode: session.startingMode
-                });
-                session.recordLocalLaunchFailure(message, failureExitReason);
-                if (!exitReason) {
-                    exitReason = failureExitReason;
-                }
-                if (failureExitReason === 'exit') {
-                    logger.warn(`[gemini-local]: Local Gemini process failed: ${message}`);
-                }
-                break;
-            }
-        }
+        return await launcher.run();
     } finally {
-        exitFuture.resolve(undefined);
-        session.client.rpcHandlerManager.registerHandler('abort', async () => {});
-        session.client.rpcHandlerManager.registerHandler('switch', async () => {});
-        session.queue.setOnMessage(null);
-
         if (!hadTranscriptPath) {
             session.removeTranscriptPathCallback(handleTranscriptPath);
         }
@@ -161,6 +101,4 @@ export async function geminiLocalLauncher(
             await (scanner as GeminiScannerHandle).cleanup();
         }
     }
-
-    return exitReason || 'exit';
 }

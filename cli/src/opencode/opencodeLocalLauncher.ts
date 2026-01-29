@@ -1,8 +1,6 @@
 import { logger } from '@/ui/logger';
 import { opencodeLocal } from './opencodeLocal';
 import { OpencodeSession } from './session';
-import { Future } from '@/utils/future';
-import { getLocalLaunchExitReason } from '@/agent/localLaunchPolicy';
 import { ensureOpencodeHookPlugin } from './utils/hookPlugin';
 import { buildOpencodeEnv } from './utils/config';
 import { ensureOpencodeConfig } from './utils/opencodeConfig';
@@ -17,6 +15,7 @@ import { join } from 'node:path';
 import { configuration } from '@/configuration';
 import type { PermissionCompletion } from '@/modules/common/permission/BasePermissionHandler';
 import { hashObject } from '@/utils/deterministicJson';
+import { BaseLocalLauncher } from '@/modules/common/launcher/BaseLocalLauncher';
 
 type OpencodeLocalLauncherOptions = {
     hookServer: OpencodeHookServer;
@@ -258,9 +257,6 @@ export async function opencodeLocalLauncher(
     session: OpencodeSession,
     opts: OpencodeLocalLauncherOptions
 ): Promise<'switch' | 'exit'> {
-    let exitReason: 'switch' | 'exit' | null = null;
-    const processAbortController = new AbortController();
-    const exitFuture = new Future<void>();
     const hookUrl = opts.hookUrl;
 
     const opencodeConfigDir = resolveOpencodeConfigDir(session);
@@ -280,6 +276,39 @@ export async function opencodeLocalLauncher(
     } catch (error) {
         logger.debug('[opencode-local]: Failed to start hapi MCP server (change_title will be unavailable)', error);
     }
+
+    const launcher = new BaseLocalLauncher({
+        label: 'opencode-local',
+        failureLabel: 'Local OpenCode process failed',
+        queue: session.queue,
+        rpcHandlerManager: session.client.rpcHandlerManager,
+        startedBy: session.startedBy,
+        startingMode: session.startingMode,
+        launch: async (abortSignal) => {
+            const env = buildOpencodeEnv();
+            env.HAPI_OPENCODE_HOOK_URL = hookUrl;
+            env.HAPI_OPENCODE_HOOK_TOKEN = opts.hookServer.token;
+            if (!env.OPENCODE_CONFIG_DIR) {
+                env.OPENCODE_CONFIG_DIR = opencodeConfigDir;
+            }
+            if (!env.OPENCODE_CONFIG && opencodeConfigPath) {
+                env.OPENCODE_CONFIG = opencodeConfigPath;
+            }
+
+            await opencodeLocal({
+                path: session.path,
+                abort: abortSignal,
+                env,
+                sessionId: session.sessionId ?? undefined
+            });
+        },
+        sendFailureMessage: (message) => {
+            session.sendSessionEvent({ type: 'message', message });
+        },
+        recordLocalLaunchFailure: (message, exitReason) => {
+            session.recordLocalLaunchFailure(message, exitReason);
+        }
+    });
 
     let storageScanner: OpencodeStorageScannerHandle | null = null;
     const messageRoles = new Map<string, string>();
@@ -587,96 +616,8 @@ export async function opencodeLocalLauncher(
         } catch (error) {
             logger.debug('[opencode-local]: Failed to start storage scanner', error);
         }
-
-        const abortProcess = async () => {
-            if (!processAbortController.signal.aborted) {
-                processAbortController.abort();
-            }
-            await exitFuture.promise;
-        };
-
-        const doAbort = async () => {
-            logger.debug('[opencode-local]: abort requested');
-            if (!exitReason) {
-                exitReason = 'switch';
-            }
-            session.queue.reset();
-            await abortProcess();
-        };
-
-        const doSwitch = async () => {
-            logger.debug('[opencode-local]: switch requested');
-            if (!exitReason) {
-                exitReason = 'switch';
-            }
-            await abortProcess();
-        };
-
-        session.client.rpcHandlerManager.registerHandler('abort', doAbort);
-        session.client.rpcHandlerManager.registerHandler('switch', doSwitch);
-        session.queue.setOnMessage(() => {
-            void doSwitch();
-        });
-
-        if (session.queue.size() > 0) {
-            return 'switch';
-        }
-
-        while (true) {
-            if (exitReason) {
-                return exitReason;
-            }
-
-            logger.debug('[opencode-local]: launch');
-            try {
-                const env = buildOpencodeEnv();
-                env.HAPI_OPENCODE_HOOK_URL = hookUrl;
-                env.HAPI_OPENCODE_HOOK_TOKEN = opts.hookServer.token;
-                if (!env.OPENCODE_CONFIG_DIR) {
-                    env.OPENCODE_CONFIG_DIR = opencodeConfigDir;
-                }
-                // Set OPENCODE_CONFIG to point to our generated config file (if MCP server started)
-                if (!env.OPENCODE_CONFIG && opencodeConfigPath) {
-                    env.OPENCODE_CONFIG = opencodeConfigPath;
-                }
-
-                await opencodeLocal({
-                    path: session.path,
-                    abort: processAbortController.signal,
-                    env,
-                    sessionId: session.sessionId ?? undefined
-                });
-
-                if (!exitReason) {
-                    exitReason = 'exit';
-                    break;
-                }
-            } catch (error) {
-                logger.debug('[opencode-local]: launch error', error);
-                const message = error instanceof Error ? error.message : String(error);
-                session.sendSessionEvent({
-                    type: 'message',
-                    message: `Local OpenCode process failed: ${message}`
-                });
-                const failureExitReason = exitReason ?? getLocalLaunchExitReason({
-                    startedBy: session.startedBy,
-                    startingMode: session.startingMode
-                });
-                session.recordLocalLaunchFailure(message, failureExitReason);
-                if (!exitReason) {
-                    exitReason = failureExitReason;
-                }
-                if (failureExitReason === 'exit') {
-                    logger.warn(`[opencode-local]: Local OpenCode process failed: ${message}`);
-                }
-                break;
-            }
-        }
+        return await launcher.run();
     } finally {
-        exitFuture.resolve(undefined);
-        session.client.rpcHandlerManager.registerHandler('abort', async () => {});
-        session.client.rpcHandlerManager.registerHandler('switch', async () => {});
-        session.queue.setOnMessage(null);
         session.removeHookEventHandler(handleHookEvent);
         if (storageScanner) {
             await storageScanner.cleanup();
@@ -686,6 +627,4 @@ export async function opencodeLocalLauncher(
             logger.debug('[opencode-local]: Stopped hapi MCP server');
         }
     }
-
-    return exitReason || 'exit';
 }
