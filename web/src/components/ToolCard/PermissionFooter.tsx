@@ -4,6 +4,7 @@ import type { SessionMetadataSummary } from '@/types/api'
 import type { ChatToolCall, ToolPermission } from '@/chat/types'
 import { usePlatform } from '@/hooks/usePlatform'
 import { Spinner } from '@/components/Spinner'
+import { isCodexFamilyFlavor } from '@/lib/agentFlavorUtils'
 import { getInputStringAny } from '@/lib/toolInputUtils'
 import { useTranslation } from '@/lib/use-translation'
 
@@ -22,9 +23,7 @@ function isToolAllowedForSession(toolName: string, toolInput: unknown, allowedTo
 }
 
 function isCodexSession(metadata: SessionMetadataSummary | null, toolName: string): boolean {
-    return metadata?.flavor === 'codex'
-        || metadata?.flavor === 'gemini'
-        || metadata?.flavor === 'opencode'
+    return isCodexFamilyFlavor(metadata?.flavor)
         || toolName.startsWith('Codex')
         || toolName.startsWith('Gemini')
         || toolName.startsWith('OpenCode')
