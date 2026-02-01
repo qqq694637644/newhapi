@@ -179,6 +179,7 @@ function SessionsIndexPage() {
 
 function SessionPage() {
     const { api } = useAppContext()
+    const { t } = useTranslation()
     const goBack = useAppGoBack()
     const navigate = useNavigate()
     const queryClient = useQueryClient()
@@ -249,6 +250,17 @@ function SessionPage() {
                     replace: true
                 })
             })()
+        },
+        onBlocked: (reason) => {
+            if (reason === 'no-api') {
+                addToast({
+                    title: t('send.blocked.title'),
+                    body: t('send.blocked.noConnection'),
+                    sessionId: sessionId ?? '',
+                    url: ''
+                })
+            }
+            // 'no-session' and 'pending' don't need toast - either invalid state or expected behavior
         }
     })
 
