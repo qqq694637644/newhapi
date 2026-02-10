@@ -48,6 +48,15 @@ function parseSlashCommand(text: string): { command: string; args: string } | nu
     return { command, args };
 }
 
+function toApiCollaborationMode(
+    mode: EnhancedMode['collaborationMode']
+): string | null {
+    if (!mode || mode === 'default') {
+        return null;
+    }
+    return mode;
+}
+
 export async function runCodex(opts: {
     startedBy?: 'runner' | 'terminal';
     codexArgs?: string[];
@@ -85,7 +94,9 @@ export async function runCodex(opts: {
 
     let currentPermissionMode: PermissionMode = opts.permissionMode ?? 'default';
     let currentModel = opts.model;
-    let currentCollaborationMode: EnhancedMode['collaborationMode'];
+    // Keep an explicit default mode internally so turn/start always has a concrete collaboration mode.
+    // API responses still represent default as null for backward-compatible "OFF" semantics.
+    let currentCollaborationMode: EnhancedMode['collaborationMode'] = 'default';
 
     const lifecycle = createRunnerLifecycle({
         session,
@@ -114,7 +125,7 @@ export async function runCodex(opts: {
             const normalizedArgs = slashCommand.args.toLowerCase();
 
             if (normalizedArgs === 'off') {
-                currentCollaborationMode = undefined;
+                currentCollaborationMode = 'default';
                 session.sendCodexMessage({
                     type: 'message',
                     message: 'Plan mode: OFF',
@@ -174,7 +185,7 @@ export async function runCodex(opts: {
 
     const resolveCollaborationMode = (value: unknown): EnhancedMode['collaborationMode'] => {
         if (value === null) {
-            return undefined;
+            return 'default';
         }
         if (typeof value !== 'string') {
             throw new Error('Invalid collaboration mode');
@@ -268,7 +279,7 @@ export async function runCodex(opts: {
             available: false,
             sessionId: sessionWrapperRef.current?.sessionId ?? null,
             model: currentModel ?? null,
-            collaborationMode: currentCollaborationMode ?? null,
+            collaborationMode: toApiCollaborationMode(currentCollaborationMode),
             permissionMode: currentPermissionMode,
             approvalPolicy: resolveEffectiveApprovalPolicy(),
             sandbox: resolveEffectiveSandbox(),
@@ -379,7 +390,7 @@ export async function runCodex(opts: {
         return {
             applied: {
                 permissionMode: currentPermissionMode,
-                collaborationMode: currentCollaborationMode,
+                collaborationMode: toApiCollaborationMode(currentCollaborationMode),
                 model: currentModel ?? null
             }
         };
@@ -388,7 +399,7 @@ export async function runCodex(opts: {
     session.rpcHandlerManager.registerHandler('get-session-config', async () => {
         return {
             permissionMode: currentPermissionMode,
-            collaborationMode: currentCollaborationMode ?? null,
+            collaborationMode: toApiCollaborationMode(currentCollaborationMode),
             model: currentModel ?? null
         };
     });

@@ -54,7 +54,15 @@ describe('appServerConfig', () => {
         expect(params.input).toEqual([{ type: 'text', text: 'hello' }]);
         expect(params.approvalPolicy).toBe('never');
         expect(params.sandboxPolicy).toEqual({ type: 'readOnly' });
-        expect(params.model).toBe('o3');
+        expect(params.collaborationMode).toEqual({
+            mode: 'default',
+            settings: {
+                model: 'o3',
+                reasoning_effort: null,
+                developer_instructions: null
+            }
+        });
+        expect(params.model).toBeUndefined();
     });
 
     it('puts collaboration mode in turn params with model settings', () => {
@@ -73,6 +81,26 @@ describe('appServerConfig', () => {
             }
         });
         expect(params.model).toBeUndefined();
+    });
+
+    it('supports explicit collaboration-mode developer instructions override', () => {
+        const params = buildTurnStartParams({
+            threadId: 'thread-1',
+            message: 'hello',
+            mode: { permissionMode: 'default', model: 'o3', collaborationMode: 'plan' },
+            overrides: {
+                collaborationModeDeveloperInstructions: 'Plan mode instructions from preset'
+            }
+        });
+
+        expect(params.collaborationMode).toEqual({
+            mode: 'plan',
+            settings: {
+                model: 'o3',
+                reasoning_effort: null,
+                developer_instructions: 'Plan mode instructions from preset'
+            }
+        });
     });
 
     it('applies CLI overrides for turns when permission mode is default', () => {
@@ -108,6 +136,25 @@ describe('appServerConfig', () => {
         });
 
         expect(params.approvalPolicy).toBe('on-request');
+        expect(params.collaborationMode).toEqual({
+            mode: 'default',
+            settings: {
+                model: 'gpt-5',
+                reasoning_effort: null,
+                developer_instructions: null
+            }
+        });
+        expect(params.model).toBeUndefined();
+    });
+
+    it('uses top-level model override when mode is absent', () => {
+        const params = buildTurnStartParams({
+            threadId: 'thread-1',
+            message: 'hello',
+            overrides: { model: 'gpt-5' }
+        });
+
         expect(params.model).toBe('gpt-5');
+        expect(params.collaborationMode).toBeUndefined();
     });
 });

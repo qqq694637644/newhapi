@@ -100,10 +100,28 @@ export type SandboxPolicy =
 export type ReasoningEffort = 'low' | 'medium' | 'high' | 'auto';
 export type ReasoningSummary = 'auto' | 'none' | 'brief' | 'detailed';
 
-export type CollaborationMode = {
-    mode: 'plan' | 'code' | 'pair_programming' | 'execute' | 'custom' | (string & {});
-    settings?: Record<string, unknown>;
+export type CollaborationModeSettings = {
+    model: string;
+    reasoning_effort: ReasoningEffort | null;
+    developer_instructions: string | null;
 };
+
+export type CollaborationMode = {
+    mode: 'default' | 'plan' | 'code' | 'pair_programming' | 'execute' | 'custom' | (string & {});
+    settings?: CollaborationModeSettings;
+};
+
+export interface CollaborationModeMask {
+    name: string;
+    mode: string | null;
+    model: string | null;
+    reasoning_effort: ReasoningEffort | null;
+    developer_instructions: string | null;
+}
+
+export interface CollaborationModeListResponse {
+    data: CollaborationModeMask[];
+}
 
 export interface TurnStartParams {
     threadId: string;

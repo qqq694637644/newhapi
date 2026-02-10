@@ -541,6 +541,8 @@ class CodexRemoteLauncher extends RemoteLauncherBase {
             }
         };
 
+        const collaborationModeInstructionsByMode = new Map<string, string>();
+
         if (useAppServer && appServerClient) {
             await appServerClient.connect();
             await appServerClient.initialize({
@@ -549,6 +551,25 @@ class CodexRemoteLauncher extends RemoteLauncherBase {
                     version: '1.0.0'
                 }
             });
+
+            try {
+                const collaborationModes = await appServerClient.listCollaborationModes();
+                const items = Array.isArray(asRecord(collaborationModes)?.data)
+                    ? asRecord(collaborationModes)?.data as unknown[]
+                    : [];
+
+                for (const item of items) {
+                    const itemRecord = asRecord(item);
+                    const mode = asString(itemRecord?.mode);
+                    const instructions = asString(itemRecord?.developer_instructions);
+                    if (!mode || !instructions) {
+                        continue;
+                    }
+                    collaborationModeInstructionsByMode.set(mode, instructions);
+                }
+            } catch (error) {
+                logger.debug('[Codex] Failed to load collaboration mode presets from app-server', error);
+            }
         } else if (mcpClient) {
             await mcpClient.connect();
         }
@@ -647,11 +668,17 @@ class CodexRemoteLauncher extends RemoteLauncherBase {
                         this.currentThreadId = threadId;
                         session.onSessionFound(threadId);
 
+                        const collaborationModeDeveloperInstructions = message.mode.collaborationMode
+                            ? collaborationModeInstructionsByMode.get(message.mode.collaborationMode)
+                            : undefined;
                         const turnParams = buildTurnStartParams({
                             threadId,
                             message: message.message,
                             mode: message.mode,
-                            cliOverrides: session.codexCliOverrides
+                            cliOverrides: session.codexCliOverrides,
+                            overrides: collaborationModeDeveloperInstructions !== undefined
+                                ? { collaborationModeDeveloperInstructions }
+                                : undefined
                         });
                         turnInFlight = true;
                         const turnResponse = await appServerClient.startTurn(turnParams, {
@@ -686,11 +713,17 @@ class CodexRemoteLauncher extends RemoteLauncherBase {
                         continue;
                     }
 
+                    const collaborationModeDeveloperInstructions = message.mode.collaborationMode
+                        ? collaborationModeInstructionsByMode.get(message.mode.collaborationMode)
+                        : undefined;
                     const turnParams = buildTurnStartParams({
                         threadId: this.currentThreadId,
                         message: message.message,
                         mode: message.mode,
-                        cliOverrides: session.codexCliOverrides
+                        cliOverrides: session.codexCliOverrides,
+                        overrides: collaborationModeDeveloperInstructions !== undefined
+                            ? { collaborationModeDeveloperInstructions }
+                            : undefined
                     });
                     turnInFlight = true;
                     const turnResponse = await appServerClient.startTurn(turnParams, {

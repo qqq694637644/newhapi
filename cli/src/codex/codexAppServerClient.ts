@@ -2,6 +2,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { logger } from '@/ui/logger';
 import { killProcessByChildProcess } from '@/utils/process';
 import type {
+    CollaborationModeListResponse,
     InitializeParams,
     InitializeResponse,
     ConfigReadParams,
@@ -194,6 +195,13 @@ export class CodexAppServerClient {
             timeoutMs: 30_000
         });
         return response as ConfigReadResponse;
+    }
+
+    async listCollaborationModes(): Promise<CollaborationModeListResponse> {
+        const response = await this.sendRequest('collaborationMode/list', {}, {
+            timeoutMs: 30_000
+        });
+        return response as CollaborationModeListResponse;
     }
 
     async disconnect(): Promise<void> {

@@ -111,6 +111,7 @@ export function buildTurnStartParams(args: {
         approvalPolicy?: TurnStartParams['approvalPolicy'];
         sandboxPolicy?: TurnStartParams['sandboxPolicy'];
         model?: string;
+        collaborationModeDeveloperInstructions?: string | null;
     };
 }): TurnStartParams {
     const params: TurnStartParams = {
@@ -134,14 +135,19 @@ export function buildTurnStartParams(args: {
         params.sandboxPolicy = sandboxPolicy;
     }
 
-    const collaborationMode = args.mode?.collaborationMode;
+    // Always send an explicit collaboration mode when mode is present.
+    // This avoids app-server keeping a stale prior mode (e.g. remaining in plan mode after "/plan off").
+    const collaborationMode = args.mode
+        ? (args.mode.collaborationMode ?? 'default')
+        : undefined;
     const model = args.overrides?.model ?? args.mode?.model;
+    const collaborationModeDeveloperInstructions = args.overrides?.collaborationModeDeveloperInstructions;
     if (collaborationMode) {
         const settings = model
             ? {
                 model,
                 reasoning_effort: null,
-                developer_instructions: null
+                developer_instructions: collaborationModeDeveloperInstructions ?? null
             }
             : undefined;
         params.collaborationMode = settings

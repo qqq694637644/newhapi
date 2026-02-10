@@ -134,6 +134,13 @@ export function useSlashCommands(
             }
         }
 
+        // Stop slash-command autocomplete once arguments start.
+        // Example: "/plan off" should be sent as-is on Enter, not replaced back to "/plan".
+        const normalizedQuery = queryText.trimStart()
+        if (/^\/\S+\s+/.test(normalizedQuery)) {
+            return []
+        }
+
         const searchTerm = queryText.startsWith('/')
             ? queryText.slice(1).toLowerCase()
             : queryText.toLowerCase()

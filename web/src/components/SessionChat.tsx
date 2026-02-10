@@ -255,6 +255,24 @@ export function SessionChat(props: {
             }
 
             if (commandToken === 'plan') {
+                const normalizedArgs = args.trim().toLowerCase()
+                if (normalizedArgs === 'off') {
+                    const response = await props.api.setCodexConfig(
+                        props.session.id,
+                        { collaborationMode: null }
+                    )
+                    if (!response.success || !response.config) {
+                        throw new Error(response.error ?? 'Failed to update collaboration mode')
+                    }
+                    if (response.config.collaborationMode !== null) {
+                        throw new Error(`Plan mode not disabled (actual: ${response.config.collaborationMode ?? 'default'})`)
+                    }
+                    appendCommandMessage('Plan mode: OFF')
+                    props.onRefresh()
+                    haptic.notification('success')
+                    return true
+                }
+
                 const fallbackPlanModel = 'gpt-5.2-codex'
                 let resolvedModel: string | undefined
 
@@ -286,7 +304,7 @@ export function SessionChat(props: {
                         : `Plan mode: ON (model fallback: ${fallbackPlanModel})`
                 )
 
-                if (args) {
+                if (args && normalizedArgs !== 'on') {
                     props.onSend(args)
                 }
 
