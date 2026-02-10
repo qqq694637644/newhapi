@@ -7,6 +7,9 @@ export interface InitializeParams {
         title?: string;
         version: string;
     };
+    capabilities?: {
+        experimentalApi?: boolean;
+    };
 }
 
 export interface InitializeResponse {

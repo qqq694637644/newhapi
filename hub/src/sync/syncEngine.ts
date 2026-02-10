@@ -42,12 +42,18 @@ export type ResumeSessionResult =
     | { type: 'success'; sessionId: string }
     | { type: 'error'; message: string; code: 'session_not_found' | 'access_denied' | 'no_machine_online' | 'resume_unavailable' | 'resume_failed' }
 
+type CachedCodexConfig = {
+    model?: string
+    collaborationMode?: string | null
+}
+
 export class SyncEngine {
     private readonly eventPublisher: EventPublisher
     private readonly sessionCache: SessionCache
     private readonly machineCache: MachineCache
     private readonly messageService: MessageService
     private readonly rpcGateway: RpcGateway
+    private readonly codexConfigBySessionId = new Map<string, CachedCodexConfig>()
     private inactivityTimer: NodeJS.Timeout | null = null
 
     constructor(
@@ -87,6 +93,43 @@ export class SyncEngine {
             return this.machineCache.getMachine(event.machineId)?.namespace
         }
         return undefined
+    }
+
+    private rememberCodexConfig(
+        sessionId: string,
+        update: { model?: string; collaborationMode?: string | null }
+    ): void {
+        if (update.model === undefined && update.collaborationMode === undefined) {
+            return
+        }
+
+        const current = this.codexConfigBySessionId.get(sessionId) ?? {}
+        if (update.model !== undefined) {
+            current.model = update.model
+        }
+        if (update.collaborationMode !== undefined) {
+            current.collaborationMode = update.collaborationMode
+        }
+        this.codexConfigBySessionId.set(sessionId, current)
+    }
+
+    private moveCodexConfig(fromSessionId: string, toSessionId: string): void {
+        if (fromSessionId === toSessionId) {
+            return
+        }
+
+        const fromConfig = this.codexConfigBySessionId.get(fromSessionId)
+        if (!fromConfig) {
+            return
+        }
+
+        const target = this.codexConfigBySessionId.get(toSessionId) ?? {}
+        const merged: CachedCodexConfig = {
+            model: target.model ?? fromConfig.model,
+            collaborationMode: target.collaborationMode ?? fromConfig.collaborationMode
+        }
+        this.codexConfigBySessionId.set(toSessionId, merged)
+        this.codexConfigBySessionId.delete(fromSessionId)
     }
 
     getSessions(): Session[] {
@@ -274,6 +317,7 @@ export class SyncEngine {
     }
 
     async deleteSession(sessionId: string): Promise<void> {
+        this.codexConfigBySessionId.delete(sessionId)
         await this.sessionCache.deleteSession(sessionId)
     }
 
@@ -290,11 +334,34 @@ export class SyncEngine {
         if (!result || typeof result !== 'object') {
             throw new Error('Invalid response from session config RPC')
         }
-        const obj = result as { applied?: { permissionMode?: Session['permissionMode']; modelMode?: Session['modelMode'] } }
+        const obj = result as {
+            applied?: {
+                permissionMode?: Session['permissionMode']
+                modelMode?: Session['modelMode']
+                model?: string | null
+                collaborationMode?: string | null
+            }
+        }
         const applied = obj.applied
         if (!applied || typeof applied !== 'object') {
             throw new Error('Missing applied session config')
         }
+
+        const appliedModel = typeof applied.model === 'string' && applied.model.trim().length > 0
+            ? applied.model.trim()
+            : undefined
+        const appliedCollaborationMode = applied.collaborationMode === null
+            ? null
+            : typeof applied.collaborationMode === 'string' && applied.collaborationMode.trim().length > 0
+                ? applied.collaborationMode.trim()
+                : undefined
+
+        this.rememberCodexConfig(sessionId, {
+            model: config.model !== undefined ? (appliedModel ?? config.model.trim()) : undefined,
+            collaborationMode: config.collaborationMode !== undefined
+                ? (appliedCollaborationMode ?? config.collaborationMode)
+                : undefined
+        })
 
         this.sessionCache.applySessionConfig(sessionId, applied)
     }
@@ -396,9 +463,27 @@ export class SyncEngine {
             return { type: 'error', message: 'Session failed to become active', code: 'resume_failed' }
         }
 
+        if (flavor === 'codex') {
+            const cachedConfig = this.codexConfigBySessionId.get(access.sessionId)
+            if (cachedConfig && (cachedConfig.model !== undefined || cachedConfig.collaborationMode !== undefined)) {
+                try {
+                    await this.applySessionConfig(spawnResult.sessionId, {
+                        model: cachedConfig.model,
+                        collaborationMode: cachedConfig.collaborationMode
+                    })
+                } catch (error) {
+                    const message = error instanceof Error
+                        ? `Failed to restore Codex config on resume: ${error.message}`
+                        : 'Failed to restore Codex config on resume'
+                    return { type: 'error', message, code: 'resume_failed' }
+                }
+            }
+        }
+
         if (spawnResult.sessionId !== access.sessionId) {
             try {
                 await this.sessionCache.mergeSessions(access.sessionId, spawnResult.sessionId, namespace)
+                this.moveCodexConfig(access.sessionId, spawnResult.sessionId)
             } catch (error) {
                 const message = error instanceof Error ? error.message : 'Failed to merge resumed session'
                 return { type: 'error', message, code: 'resume_failed' }

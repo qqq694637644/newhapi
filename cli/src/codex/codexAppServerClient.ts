@@ -133,7 +133,13 @@ export class CodexAppServerClient {
     }
 
     async initialize(params: InitializeParams): Promise<InitializeResponse> {
-        const response = await this.sendRequest('initialize', params, { timeoutMs: 30_000 });
+        const response = await this.sendRequest('initialize', {
+            ...params,
+            capabilities: {
+                experimentalApi: true,
+                ...params.capabilities
+            }
+        }, { timeoutMs: 30_000 });
         this.sendNotification('initialized');
         return response as InitializeResponse;
     }
