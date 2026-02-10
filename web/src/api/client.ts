@@ -2,6 +2,8 @@ import type {
     AttachmentMetadata,
     AuthResponse,
     DeleteUploadResponse,
+    CodexConfigResponse,
+    CodexStatusResponse,
     ListDirectoryResponse,
     FileReadResponse,
     FileSearchResponse,
@@ -318,6 +320,25 @@ export class ApiClient {
             method: 'POST',
             body: JSON.stringify({ model })
         })
+    }
+
+    async setCodexConfig(
+        sessionId: string,
+        config: { model?: string; collaborationMode?: string | null }
+    ): Promise<CodexConfigResponse> {
+        return await this.request<CodexConfigResponse>(
+            `/api/sessions/${encodeURIComponent(sessionId)}/codex-config`,
+            {
+                method: 'POST',
+                body: JSON.stringify(config)
+            }
+        )
+    }
+
+    async getCodexStatus(sessionId: string): Promise<CodexStatusResponse> {
+        return await this.request<CodexStatusResponse>(
+            `/api/sessions/${encodeURIComponent(sessionId)}/codex-status`
+        )
     }
 
     async approvePermission(

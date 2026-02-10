@@ -173,6 +173,28 @@ export type SkillsResponse = {
     error?: string
 }
 
+export type CodexConfigResponse = {
+    success: boolean
+    config?: {
+        model: string | null
+        collaborationMode: string | null
+        permissionMode: string
+    }
+    error?: string
+}
+
+export type CodexStatusResponse = {
+    success: boolean
+    status?: {
+        active: boolean
+        model: string | null
+        collaborationMode: string | null
+        permissionMode: string
+        pendingRequests: number
+    }
+    error?: string
+}
+
 export type PushSubscriptionKeys = {
     p256dh: string
     auth: string

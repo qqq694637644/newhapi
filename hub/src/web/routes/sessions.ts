@@ -14,6 +14,13 @@ const modelModeSchema = z.object({
     model: ModelModeSchema
 })
 
+const codexConfigSchema = z.object({
+    model: z.string().min(1).optional(),
+    collaborationMode: z.string().min(1).nullable().optional()
+}).refine((value) => value.model !== undefined || value.collaborationMode !== undefined, {
+    message: 'At least one field is required'
+})
+
 const renameSessionSchema = z.object({
     name: z.string().min(1).max(255)
 })
@@ -35,6 +42,17 @@ function estimateBase64Bytes(base64: string): number {
     if (len === 0) return 0
     const padding = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0
     return Math.floor((len * 3) / 4) - padding
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+    if (!value || typeof value !== 'object') {
+        return null
+    }
+    return value as Record<string, unknown>
+}
+
+function asString(value: unknown): string | null {
+    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
 }
 
 export function createSessionsRoutes(getSyncEngine: () => SyncEngine | null): Hono<WebAppEnv> {
@@ -284,6 +302,116 @@ export function createSessionsRoutes(getSyncEngine: () => SyncEngine | null): Ho
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Failed to apply model mode'
             return c.json({ error: message }, 409)
+        }
+    })
+
+    app.post('/sessions/:id/codex-config', async (c) => {
+        const engine = requireSyncEngine(c, getSyncEngine)
+        if (engine instanceof Response) {
+            return engine
+        }
+
+        const sessionResult = requireSessionFromParam(c, engine, { requireActive: true })
+        if (sessionResult instanceof Response) {
+            return sessionResult
+        }
+
+        const flavor = sessionResult.session.metadata?.flavor ?? 'claude'
+        if (flavor !== 'codex') {
+            return c.json({ success: false, error: 'Codex config is only supported for Codex sessions' }, 400)
+        }
+
+        const body = await c.req.json().catch(() => null)
+        const parsed = codexConfigSchema.safeParse(body)
+        if (!parsed.success) {
+            return c.json({ success: false, error: 'Invalid body' }, 400)
+        }
+
+        const config: { model?: string; collaborationMode?: string | null } = {}
+        if (parsed.data.model !== undefined) {
+            config.model = parsed.data.model.trim()
+        }
+        if (parsed.data.collaborationMode !== undefined) {
+            config.collaborationMode = parsed.data.collaborationMode === null
+                ? null
+                : parsed.data.collaborationMode.trim()
+        }
+
+        try {
+            await engine.applySessionConfig(sessionResult.sessionId, config)
+            const raw = await engine.getSessionConfig(sessionResult.sessionId)
+            const record = asRecord(raw)
+            const model = asString(record?.model)
+            const collaborationMode = record?.collaborationMode === null ? null : asString(record?.collaborationMode)
+            const permissionMode = asString(record?.permissionMode) ?? sessionResult.session.permissionMode ?? 'default'
+
+            return c.json({
+                success: true,
+                config: {
+                    model,
+                    collaborationMode,
+                    permissionMode
+                }
+            })
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to apply codex config'
+            return c.json({ success: false, error: message }, 409)
+        }
+    })
+
+    app.get('/sessions/:id/codex-status', async (c) => {
+        const engine = requireSyncEngine(c, getSyncEngine)
+        if (engine instanceof Response) {
+            return engine
+        }
+
+        const sessionResult = requireSessionFromParam(c, engine)
+        if (sessionResult instanceof Response) {
+            return sessionResult
+        }
+
+        const flavor = sessionResult.session.metadata?.flavor ?? 'claude'
+        if (flavor !== 'codex') {
+            return c.json({ success: false, error: 'Codex status is only supported for Codex sessions' }, 400)
+        }
+
+        const pendingRequests = sessionResult.session.agentState?.requests
+            ? Object.keys(sessionResult.session.agentState.requests).length
+            : 0
+
+        if (!sessionResult.session.active) {
+            return c.json({
+                success: true,
+                status: {
+                    active: false,
+                    model: null,
+                    collaborationMode: null,
+                    permissionMode: sessionResult.session.permissionMode ?? 'default',
+                    pendingRequests
+                }
+            })
+        }
+
+        try {
+            const raw = await engine.getSessionConfig(sessionResult.sessionId)
+            const record = asRecord(raw)
+            const model = asString(record?.model)
+            const collaborationMode = record?.collaborationMode === null ? null : asString(record?.collaborationMode)
+            const permissionMode = asString(record?.permissionMode) ?? sessionResult.session.permissionMode ?? 'default'
+
+            return c.json({
+                success: true,
+                status: {
+                    active: true,
+                    model,
+                    collaborationMode,
+                    permissionMode,
+                    pendingRequests
+                }
+            })
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to get codex status'
+            return c.json({ success: false, error: message }, 409)
         }
     })
 

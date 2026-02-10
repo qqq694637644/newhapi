@@ -1,3 +1,5 @@
+import { CODEX_MODEL_OPTIONS } from '@/lib/codex-models'
+
 export type AgentType = 'claude' | 'codex' | 'gemini' | 'opencode'
 export type SessionType = 'simple' | 'worktree'
 
@@ -9,10 +11,7 @@ export const MODEL_OPTIONS: Record<AgentType, { value: string; label: string }[]
     ],
     codex: [
         { value: 'auto', label: 'Auto' },
-        { value: 'gpt-5.2-codex', label: 'GPT-5.2 Codex' },
-        { value: 'gpt-5.2', label: 'GPT-5.2' },
-        { value: 'gpt-5.1-codex-max', label: 'GPT-5.1 Codex Max' },
-        { value: 'gpt-5.1-codex-mini', label: 'GPT-5.1 Codex Mini' },
+        ...CODEX_MODEL_OPTIONS.map((option) => ({ value: option.value, label: option.label })),
     ],
     gemini: [
         { value: 'auto', label: 'Auto' },

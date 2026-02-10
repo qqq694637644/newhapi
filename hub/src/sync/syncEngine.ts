@@ -282,6 +282,8 @@ export class SyncEngine {
         config: {
             permissionMode?: PermissionMode
             modelMode?: ModelMode
+            model?: string
+            collaborationMode?: string | null
         }
     ): Promise<void> {
         const result = await this.rpcGateway.requestSessionConfig(sessionId, config)
@@ -295,6 +297,10 @@ export class SyncEngine {
         }
 
         this.sessionCache.applySessionConfig(sessionId, applied)
+    }
+
+    async getSessionConfig(sessionId: string): Promise<unknown> {
+        return await this.rpcGateway.getSessionConfig(sessionId)
     }
 
     async spawnSession(

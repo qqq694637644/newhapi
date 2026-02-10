@@ -15,6 +15,7 @@ import { createAttachmentAdapter } from '@/lib/attachmentAdapter'
 import { SessionHeader } from '@/components/SessionHeader'
 import { usePlatform } from '@/hooks/usePlatform'
 import { useSessionActions } from '@/hooks/mutations/useSessionActions'
+import { appendOptimisticMessage } from '@/lib/message-window-store'
 import { useVoiceOptional } from '@/lib/voice-context'
 import { RealtimeVoiceSession, registerSessionStore, registerVoiceHooksStore, voiceHooks } from '@/realtime'
 
@@ -50,6 +51,170 @@ export function SessionChat(props: {
         props.session.id,
         agentFlavor
     )
+
+    const appendCommandMessage = useCallback((text: string) => {
+        const localMessageId = typeof crypto?.randomUUID === 'function'
+            ? crypto.randomUUID()
+            : `local-command-${Date.now()}-${Math.random().toString(16).slice(2)}`
+
+        appendOptimisticMessage(props.session.id, {
+            id: localMessageId,
+            seq: null,
+            localId: null,
+            createdAt: Date.now(),
+            content: {
+                role: 'agent',
+                content: text
+            }
+        })
+        setForceScrollToken((token) => token + 1)
+    }, [props.session.id])
+
+    const runCodexCommand = useCallback(async (text: string, attachments?: AttachmentMetadata[]): Promise<boolean> => {
+        if (agentFlavor !== 'codex') {
+            return false
+        }
+
+        const trimmed = text.trim()
+        if (!trimmed.startsWith('/')) {
+            return false
+        }
+
+        const firstSpace = trimmed.indexOf(' ')
+        const commandToken = (firstSpace === -1 ? trimmed.slice(1) : trimmed.slice(1, firstSpace)).toLowerCase()
+        const args = firstSpace === -1 ? '' : trimmed.slice(firstSpace + 1).trim()
+
+        if (commandToken === 'new') {
+            appendCommandMessage('Command disabled: `/new` is disabled in HAPI. Start a new session from the New Session button.')
+            haptic.notification('error')
+            return true
+        }
+
+        if (commandToken === 'status') {
+            try {
+                const response = await props.api.getCodexStatus(props.session.id)
+                if (!response.success || !response.status) {
+                    throw new Error(response.error ?? 'Failed to fetch status')
+                }
+                const status = response.status
+                const planEnabled = status.collaborationMode === 'plan' ? 'ON' : 'OFF'
+                appendCommandMessage(
+                    `HAPI status:\n` +
+                    `- Model: ${status.model ?? 'default'}\n` +
+                    `- Plan: ${planEnabled}\n` +
+                    `- Permission: ${status.permissionMode}\n` +
+                    `- Pending requests: ${status.pendingRequests}\n` +
+                    `- Active: ${status.active ? 'yes' : 'no'}\n\n` +
+                    `Forwarding \`/status\` to Codex for native status output...`
+                )
+                props.onRefresh()
+                haptic.notification('success')
+            } catch (error) {
+                const message = error instanceof Error ? error.message : 'Failed to fetch HAPI status'
+                appendCommandMessage(
+                    `HAPI status fetch failed: ${message}\n` +
+                    `Forwarding \`/status\` to Codex for native status output...`
+                )
+                haptic.notification('error')
+            }
+
+            // Let Codex handle native /status in addition to HAPI status.
+            return false
+        }
+
+        const recognized = commandToken === 'model'
+            || commandToken === 'skills'
+            || commandToken === 'plan'
+
+        if (!recognized) {
+            return false
+        }
+
+        if (attachments && attachments.length > 0) {
+            appendCommandMessage('Command failed: slash commands do not support attachments.')
+            haptic.notification('error')
+            return true
+        }
+
+        try {
+            if (commandToken === 'model') {
+                if (!args) {
+                    const response = await props.api.getCodexStatus(props.session.id)
+                    if (!response.success || !response.status) {
+                        throw new Error(response.error ?? 'Failed to fetch model status')
+                    }
+                    appendCommandMessage(`Model: ${response.status.model ?? 'default'}`)
+                } else {
+                    const response = await props.api.setCodexConfig(props.session.id, { model: args })
+                    if (!response.success || !response.config) {
+                        throw new Error(response.error ?? 'Failed to update model')
+                    }
+                    appendCommandMessage(`Model updated: ${response.config.model ?? 'default'}`)
+                }
+                props.onRefresh()
+                haptic.notification('success')
+                return true
+            }
+
+            if (commandToken === 'skills') {
+                const response = await props.api.getSkills(props.session.id)
+                if (!response.success) {
+                    throw new Error(response.error ?? 'Failed to list skills')
+                }
+                const skills = response.skills ?? []
+                if (skills.length === 0) {
+                    appendCommandMessage('Skills: none')
+                } else {
+                    const lines = skills.map((skill) => `- ${skill.name}${skill.description ? `: ${skill.description}` : ''}`)
+                    appendCommandMessage(`Skills (${skills.length}):\n${lines.join('\n')}`)
+                }
+                haptic.notification('success')
+                return true
+            }
+
+            if (commandToken === 'plan') {
+                if (!args) {
+                    const response = await props.api.getCodexStatus(props.session.id)
+                    if (!response.success || !response.status) {
+                        throw new Error(response.error ?? 'Failed to fetch plan status')
+                    }
+                    const enabled = response.status.collaborationMode === 'plan'
+                    appendCommandMessage(`Plan mode: ${enabled ? 'ON' : 'OFF'}`)
+                    haptic.notification('success')
+                    return true
+                }
+
+                const normalized = args.toLowerCase()
+                if (normalized !== 'on' && normalized !== 'off') {
+                    appendCommandMessage('Command failed: usage `/plan on|off`.')
+                    haptic.notification('error')
+                    return true
+                }
+
+                const response = await props.api.setCodexConfig(
+                    props.session.id,
+                    { collaborationMode: normalized === 'on' ? 'plan' : null }
+                )
+                if (!response.success || !response.config) {
+                    throw new Error(response.error ?? 'Failed to update plan mode')
+                }
+
+                const enabled = response.config.collaborationMode === 'plan'
+                appendCommandMessage(`Plan mode: ${enabled ? 'ON' : 'OFF'}`)
+                props.onRefresh()
+                haptic.notification('success')
+                return true
+            }
+
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Command failed'
+            appendCommandMessage(`Command failed: ${message}`)
+            haptic.notification('error')
+            return true
+        }
+
+        return false
+    }, [agentFlavor, appendCommandMessage, haptic, props.api, props.onRefresh, props.session.id])
 
     // Voice assistant integration
     const voice = useVoiceOptional()
@@ -243,9 +408,15 @@ export function SessionChat(props: {
     }, [navigate, props.session.id])
 
     const handleSend = useCallback((text: string, attachments?: AttachmentMetadata[]) => {
-        props.onSend(text, attachments)
-        setForceScrollToken((token) => token + 1)
-    }, [props.onSend])
+        void (async () => {
+            const handled = await runCodexCommand(text, attachments)
+            if (handled) {
+                return
+            }
+            props.onSend(text, attachments)
+            setForceScrollToken((token) => token + 1)
+        })()
+    }, [props.onSend, runCodexCommand])
 
     const attachmentAdapter = useMemo(() => {
         if (!props.session.active) {

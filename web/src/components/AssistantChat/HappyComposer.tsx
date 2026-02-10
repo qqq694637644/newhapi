@@ -36,6 +36,71 @@ export interface TextInputState {
 
 const defaultSuggestionHandler = async (): Promise<Suggestion[]> => []
 
+function getCodexSlashCommandAutocompleteQuery(
+    text: string,
+    selection: { start: number; end: number }
+): string | null {
+    if (selection.start !== selection.end) {
+        return null
+    }
+
+    const lineStart = text.lastIndexOf('\n', Math.max(0, selection.start - 1)) + 1
+    const beforeCursor = text.slice(lineStart, selection.start)
+    const modelMatch = beforeCursor.match(/^\s*\/model(?:\s+(\S*))?$/i)
+    if (modelMatch) {
+        return beforeCursor.trimStart()
+    }
+
+    const planMatch = beforeCursor.match(/^\s*\/plan(?:\s+(\S*))?$/i)
+    if (planMatch) {
+        return beforeCursor.trimStart()
+    }
+
+    return null
+}
+
+function applyCodexSlashCommandSuggestion(
+    text: string,
+    selection: { start: number; end: number },
+    suggestion: Suggestion
+): { text: string; cursorPosition: number } | null {
+    if (selection.start !== selection.end) {
+        return null
+    }
+
+    let commandName: 'model' | 'plan' | null = null
+    if (suggestion.key.startsWith('codex-model:')) {
+        commandName = 'model'
+    } else if (suggestion.key.startsWith('codex-plan:')) {
+        commandName = 'plan'
+    }
+    if (!commandName) {
+        return null
+    }
+
+    const lineStart = text.lastIndexOf('\n', Math.max(0, selection.start - 1)) + 1
+    const lineEnd = text.indexOf('\n', selection.start)
+    const resolvedLineEnd = lineEnd === -1 ? text.length : lineEnd
+    const line = text.slice(lineStart, resolvedLineEnd)
+
+    const linePattern = commandName === 'model'
+        ? /^\s*\/model(?:\s+\S*)?\s*$/i
+        : /^\s*\/plan(?:\s+\S*)?\s*$/i
+
+    if (!linePattern.test(line)) {
+        return null
+    }
+
+    const leadingWhitespace = line.match(/^\s*/)?.[0] ?? ''
+    const nextLine = `${leadingWhitespace}/${commandName} ${suggestion.text}`
+    const nextText = text.slice(0, lineStart) + nextLine + text.slice(resolvedLineEnd)
+
+    return {
+        text: nextText,
+        cursorPosition: lineStart + nextLine.length
+    }
+}
+
 export function HappyComposer(props: {
     disabled?: boolean
     permissionMode?: PermissionMode
@@ -147,8 +212,15 @@ export function HappyComposer(props: {
     const isIOSPWA = isIOS && isStandalone
     const bottomPaddingClass = isIOSPWA ? 'pb-0' : 'pb-3'
     const activeWord = useActiveWord(inputState.text, inputState.selection, autocompletePrefixes)
+    const codexSlashCommandAutocompleteQuery = useMemo(() => {
+        if (agentFlavor !== 'codex') {
+            return null
+        }
+        return getCodexSlashCommandAutocompleteQuery(inputState.text, inputState.selection)
+    }, [agentFlavor, inputState.selection, inputState.text])
+    const suggestionQuery = codexSlashCommandAutocompleteQuery ?? activeWord
     const [suggestions, selectedIndex, moveUp, moveDown, clearSuggestions] = useActiveSuggestions(
-        activeWord,
+        suggestionQuery,
         autocompleteSuggestions,
         { clampSelection: true, wrapAround: true }
     )
@@ -166,25 +238,38 @@ export function HappyComposer(props: {
     const handleSuggestionSelect = useCallback((index: number) => {
         const suggestion = suggestions[index]
         if (!suggestion || !textareaRef.current) return
+
+        let result: { text: string; cursorPosition: number } | null = applyCodexSlashCommandSuggestion(
+            inputState.text,
+            inputState.selection,
+            suggestion
+        )
+
         if (suggestion.text.startsWith('$')) {
             markSkillUsed(suggestion.text.slice(1))
         }
 
-        // For Codex user prompts with content, expand the content instead of command name
-        let textToInsert = suggestion.text
-        let addSpace = true
-        if (agentFlavor === 'codex' && suggestion.source === 'user' && suggestion.content) {
-            textToInsert = suggestion.content
-            addSpace = false
+        if (!result) {
+            // For Codex user prompts with content, expand the content instead of command name
+            let textToInsert = suggestion.text
+            let addSpace = true
+            if (agentFlavor === 'codex' && suggestion.source === 'user' && suggestion.content) {
+                textToInsert = suggestion.content
+                addSpace = false
+            }
+
+            result = applySuggestion(
+                inputState.text,
+                inputState.selection,
+                textToInsert,
+                autocompletePrefixes,
+                addSpace
+            )
         }
 
-        const result = applySuggestion(
-            inputState.text,
-            inputState.selection,
-            textToInsert,
-            autocompletePrefixes,
-            addSpace
-        )
+        if (!result) {
+            return
+        }
 
         api.composer().setText(result.text)
         setInputState({
