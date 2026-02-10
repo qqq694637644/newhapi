@@ -147,6 +147,10 @@ function getAgentLabel(session: SessionSummary): string {
     return 'unknown'
 }
 
+function isCodexSession(session: SessionSummary): boolean {
+    return (session.metadata?.flavor?.trim() ?? '') === 'codex'
+}
+
 function formatRelativeTime(value: number, t: (key: string, params?: Record<string, string | number>) => string): string | null {
     const ms = value < 1_000_000_000_000 ? value * 1000 : value
     if (!Number.isFinite(ms)) return null
@@ -259,7 +263,9 @@ function SessionItem(props: {
                         </span>
                         {getAgentLabel(s)}
                     </span>
-                    <span>{t('session.item.modelMode')}: {s.modelMode || 'default'}</span>
+                    {!isCodexSession(s) ? (
+                        <span>{t('session.item.modelMode')}: {s.modelMode || 'default'}</span>
+                    ) : null}
                     {s.metadata?.worktree?.branch ? (
                         <span>{t('session.item.worktree')}: {s.metadata.worktree.branch}</span>
                     ) : null}

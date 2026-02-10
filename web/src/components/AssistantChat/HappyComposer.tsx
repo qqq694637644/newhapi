@@ -51,11 +51,6 @@ function getCodexSlashCommandAutocompleteQuery(
         return beforeCursor.trimStart()
     }
 
-    const planMatch = beforeCursor.match(/^\s*\/plan(?:\s+(\S*))?$/i)
-    if (planMatch) {
-        return beforeCursor.trimStart()
-    }
-
     return null
 }
 
@@ -68,11 +63,9 @@ function applyCodexSlashCommandSuggestion(
         return null
     }
 
-    let commandName: 'model' | 'plan' | null = null
+    let commandName: 'model' | null = null
     if (suggestion.key.startsWith('codex-model:')) {
         commandName = 'model'
-    } else if (suggestion.key.startsWith('codex-plan:')) {
-        commandName = 'plan'
     }
     if (!commandName) {
         return null
@@ -83,9 +76,7 @@ function applyCodexSlashCommandSuggestion(
     const resolvedLineEnd = lineEnd === -1 ? text.length : lineEnd
     const line = text.slice(lineStart, resolvedLineEnd)
 
-    const linePattern = commandName === 'model'
-        ? /^\s*\/model(?:\s+\S*)?\s*$/i
-        : /^\s*\/plan(?:\s+\S*)?\s*$/i
+    const linePattern = /^\s*\/model(?:\s+\S*)?\s*$/i
 
     if (!linePattern.test(line)) {
         return null

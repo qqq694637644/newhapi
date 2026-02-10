@@ -4,10 +4,12 @@ import type { CodexPermissionHandler } from './permissionHandler';
 import type { CodexAppServerClient } from '../codexAppServerClient';
 
 type PermissionDecision = 'approved' | 'approved_for_session' | 'denied' | 'abort';
+type UserInputAnswers = Record<string, { answers: string[] }>;
 
 type PermissionResult = {
     decision: PermissionDecision;
     reason?: string;
+    answers?: Record<string, string[]> | Record<string, { answers: string[] }>;
 };
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -34,10 +36,36 @@ function mapDecision(decision: PermissionDecision): { decision: string } {
     }
 }
 
+function normalizeUserInputAnswers(
+    value: Record<string, string[]> | Record<string, { answers: string[] }> | undefined
+): UserInputAnswers {
+    if (!value || typeof value !== 'object') {
+        return {};
+    }
+
+    const normalized: UserInputAnswers = {};
+    for (const [key, entry] of Object.entries(value)) {
+        if (Array.isArray(entry)) {
+            normalized[key] = {
+                answers: entry.filter((item: unknown): item is string => typeof item === 'string')
+            };
+            continue;
+        }
+
+        if (entry && typeof entry === 'object' && Array.isArray(entry.answers)) {
+            normalized[key] = {
+                answers: entry.answers.filter((item: unknown): item is string => typeof item === 'string')
+            };
+        }
+    }
+
+    return normalized;
+}
+
 export function registerAppServerPermissionHandlers(args: {
     client: CodexAppServerClient;
     permissionHandler: CodexPermissionHandler;
-    onUserInputRequest?: (request: unknown) => Promise<Record<string, string[]>>;
+    onUserInputRequest?: (request: unknown) => Promise<UserInputAnswers>;
 }): void {
     const { client, permissionHandler, onUserInputRequest } = args;
 
@@ -82,13 +110,12 @@ export function registerAppServerPermissionHandlers(args: {
     client.registerRequestHandler('item/tool/requestUserInput', async (params) => {
         if (!onUserInputRequest) {
             logger.debug('[CodexAppServer] No user-input handler registered; cancelling request');
-            return { decision: 'cancel' };
+            throw new Error('request_user_input cancelled: no user-input handler registered');
         }
 
         const answers = await onUserInputRequest(params);
         return {
-            decision: 'accept',
-            answers
+            answers: normalizeUserInputAnswers(answers)
         };
     });
 }

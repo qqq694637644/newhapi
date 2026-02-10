@@ -40,7 +40,7 @@ const BUILTIN_COMMANDS: Record<string, SlashCommand[]> = {
     codex: [
         { name: 'model', description: 'Set or show current model', source: 'builtin' },
         { name: 'skills', description: 'List available skills', source: 'builtin' },
-        { name: 'plan', description: 'Set or show plan mode', source: 'builtin' },
+        { name: 'plan', description: 'Switch to plan mode', source: 'builtin' },
         { name: 'status', description: 'Show HAPI status and Codex native status', source: 'builtin' },
         { name: 'review', description: 'Review current changes and find issues', source: 'builtin' },
         { name: 'compat', description: 'Summarize conversation to prevent hitting the context limit', source: 'builtin' },
@@ -79,28 +79,6 @@ function getCodexModelSuggestions(searchTerm: string): Suggestion[] {
             text: option.value,
             label: option.value,
             description: option.description,
-            source: 'builtin' as const
-        }))
-}
-
-function parseCodexPlanCommandQuery(queryText: string): string | null {
-    const normalized = queryText.trimStart()
-    const match = normalized.match(/^\/plan(?:\s+(\S*))?$/i)
-    if (!match) {
-        return null
-    }
-    return (match[1] ?? '').toLowerCase()
-}
-
-function getCodexPlanSuggestions(searchTerm: string): Suggestion[] {
-    const values = ['on', 'off']
-    return values
-        .filter((value) => !searchTerm || value.includes(searchTerm))
-        .map((value) => ({
-            key: `codex-plan:${value}`,
-            text: value,
-            label: value,
-            description: value === 'on' ? 'Enable plan mode' : 'Disable plan mode',
             source: 'builtin' as const
         }))
 }
@@ -153,11 +131,6 @@ export function useSlashCommands(
             const modelSearch = parseCodexModelCommandQuery(queryText)
             if (modelSearch !== null) {
                 return getCodexModelSuggestions(modelSearch)
-            }
-
-            const planSearch = parseCodexPlanCommandQuery(queryText)
-            if (planSearch !== null) {
-                return getCodexPlanSuggestions(planSearch)
             }
         }
 

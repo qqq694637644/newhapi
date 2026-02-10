@@ -155,6 +155,32 @@ class CodexRemoteLauncher extends RemoteLauncherBase {
             return typeof value === 'string' && value.length > 0 ? value : null;
         };
 
+        const normalizeRequestUserInputAnswers = (
+            value: Record<string, string[]> | Record<string, { answers: string[] }> | undefined
+        ): Record<string, { answers: string[] }> => {
+            if (!value || typeof value !== 'object') {
+                return {};
+            }
+
+            const normalized: Record<string, { answers: string[] }> = {};
+            for (const [key, entry] of Object.entries(value)) {
+                if (Array.isArray(entry)) {
+                    normalized[key] = {
+                        answers: entry.filter((item: unknown): item is string => typeof item === 'string')
+                    };
+                    continue;
+                }
+
+                if (entry && typeof entry === 'object' && Array.isArray(entry.answers)) {
+                    normalized[key] = {
+                        answers: entry.answers.filter((item: unknown): item is string => typeof item === 'string')
+                    };
+                }
+            }
+
+            return normalized;
+        };
+
         const formatOutputPreview = (value: unknown): string => {
             if (typeof value === 'string') return value;
             if (typeof value === 'number' || typeof value === 'boolean') return String(value);
@@ -169,6 +195,18 @@ class CodexRemoteLauncher extends RemoteLauncherBase {
         const permissionHandler = new CodexPermissionHandler(session.client, {
             onRequest: ({ id, toolName, input }) => {
                 const inputRecord = input && typeof input === 'object' ? input as Record<string, unknown> : {};
+
+                if (toolName === 'request_user_input') {
+                    session.sendCodexMessage({
+                        type: 'tool-call',
+                        name: 'request_user_input',
+                        callId: id,
+                        input: inputRecord,
+                        id: randomUUID()
+                    });
+                    return;
+                }
+
                 const message = typeof inputRecord.message === 'string' ? inputRecord.message : undefined;
                 const rawCommand = inputRecord.command;
                 const command = Array.isArray(rawCommand)
@@ -192,14 +230,20 @@ class CodexRemoteLauncher extends RemoteLauncherBase {
                     id: randomUUID()
                 });
             },
-            onComplete: ({ id, decision, reason, approved }) => {
+            onComplete: ({ id, decision, reason, approved, toolName, answers }) => {
                 session.sendCodexMessage({
                     type: 'tool-call-result',
                     callId: id,
-                    output: {
-                        decision,
-                        reason
-                    },
+                    output: toolName === 'request_user_input'
+                        ? {
+                            decision,
+                            reason,
+                            answers: normalizeRequestUserInputAnswers(answers)
+                        }
+                        : {
+                            decision,
+                            reason
+                        },
                     is_error: !approved,
                     id: randomUUID()
                 });
@@ -426,7 +470,28 @@ class CodexRemoteLauncher extends RemoteLauncherBase {
         if (useAppServer && appServerClient && appServerEventConverter) {
             registerAppServerPermissionHandlers({
                 client: appServerClient,
-                permissionHandler
+                permissionHandler,
+                onUserInputRequest: async (request) => {
+                    const requestRecord = asRecord(request) ?? {};
+                    const toolCallId = asString(requestRecord.itemId) ?? randomUUID();
+
+                    const result = await permissionHandler.handleToolCall(
+                        toolCallId,
+                        'request_user_input',
+                        requestRecord
+                    );
+
+                    if (result.decision !== 'approved' && result.decision !== 'approved_for_session') {
+                        throw new Error(result.reason ?? 'request_user_input cancelled by user');
+                    }
+
+                    const answers = normalizeRequestUserInputAnswers(result.answers);
+                    if (Object.keys(answers).length === 0) {
+                        throw new Error('request_user_input cancelled: no answers provided');
+                    }
+
+                    return answers;
+                }
             });
 
             appServerClient.setNotificationHandler((method, params) => {

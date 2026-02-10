@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { buildThreadStartParams, buildTurnStartParams } from './appServerConfig';
-import { codexSystemPrompt } from './systemPrompt';
 
 describe('appServerConfig', () => {
     const mcpServers = { hapi: { command: 'node', args: ['mcp'] } };
@@ -14,13 +13,23 @@ describe('appServerConfig', () => {
 
         expect(params.sandbox).toBe('danger-full-access');
         expect(params.approvalPolicy).toBe('never');
-        expect(params.baseInstructions).toBe(codexSystemPrompt);
+        expect(params.baseInstructions).toBeUndefined();
         expect(params.config).toEqual({
             'mcp_servers.hapi': {
                 command: 'node',
                 args: ['mcp']
             }
         });
+    });
+
+    it('includes base instructions only when explicitly provided', () => {
+        const params = buildThreadStartParams({
+            mode: { permissionMode: 'default' },
+            mcpServers,
+            baseInstructions: 'custom-thread-instructions'
+        });
+
+        expect(params.baseInstructions).toBe('custom-thread-instructions');
     });
 
     it('ignores CLI overrides when permission mode is not default', () => {
@@ -55,7 +64,14 @@ describe('appServerConfig', () => {
             mode: { permissionMode: 'default', model: 'o3', collaborationMode: 'plan' }
         });
 
-        expect(params.collaborationMode).toEqual({ mode: 'plan', settings: { model: 'o3' } });
+        expect(params.collaborationMode).toEqual({
+            mode: 'plan',
+            settings: {
+                model: 'o3',
+                reasoning_effort: null,
+                developer_instructions: null
+            }
+        });
         expect(params.model).toBeUndefined();
     });
 

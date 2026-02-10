@@ -3,6 +3,7 @@ import { loop, type EnhancedMode, type PermissionMode } from './loop';
 import { MessageQueue2 } from '@/utils/MessageQueue2';
 import { hashObject } from '@/utils/deterministicJson';
 import { registerKillSessionHandler } from '@/claude/registerKillSessionHandler';
+import { randomUUID } from 'node:crypto';
 import type { AgentState } from '@/api/types';
 import type { CodexSession } from './session';
 import { parseCodexCliOverrides } from './utils/codexCliOverrides';
@@ -29,6 +30,23 @@ function asNumber(value: unknown): number | null {
 }
 
 export { emitReadyIfIdle } from './utils/emitReadyIfIdle';
+
+function parseSlashCommand(text: string): { command: string; args: string } | null {
+    const trimmed = text.trim();
+    if (!trimmed.startsWith('/')) {
+        return null;
+    }
+
+    const firstSpace = trimmed.indexOf(' ');
+    const command = (firstSpace === -1 ? trimmed.slice(1) : trimmed.slice(1, firstSpace)).toLowerCase();
+    const args = firstSpace === -1 ? '' : trimmed.slice(firstSpace + 1).trim();
+
+    if (!command) {
+        return null;
+    }
+
+    return { command, args };
+}
 
 export async function runCodex(opts: {
     startedBy?: 'runner' | 'terminal';
@@ -90,6 +108,44 @@ export async function runCodex(opts: {
     session.onUserMessage((message) => {
         const messagePermissionMode = currentPermissionMode;
         logger.debug(`[Codex] User message received with permission mode: ${currentPermissionMode}`);
+
+        const slashCommand = parseSlashCommand(message.content.text);
+        if (slashCommand?.command === 'plan' && (!message.content.attachments || message.content.attachments.length === 0)) {
+            const normalizedArgs = slashCommand.args.toLowerCase();
+
+            if (normalizedArgs === 'off') {
+                currentCollaborationMode = undefined;
+                session.sendCodexMessage({
+                    type: 'message',
+                    message: 'Plan mode: OFF',
+                    id: randomUUID()
+                });
+                return;
+            }
+
+            currentCollaborationMode = 'plan';
+            if (!currentModel) {
+                currentModel = 'gpt-5.2-codex';
+            }
+
+            session.sendCodexMessage({
+                type: 'message',
+                message: 'Plan mode: ON',
+                id: randomUUID()
+            });
+
+            if (!slashCommand.args || normalizedArgs === 'on') {
+                return;
+            }
+
+            const enhancedMode: EnhancedMode = {
+                permissionMode: messagePermissionMode ?? 'default',
+                model: currentModel,
+                collaborationMode: currentCollaborationMode
+            };
+            messageQueue.push(slashCommand.args, enhancedMode);
+            return;
+        }
 
         const enhancedMode: EnhancedMode = {
             permissionMode: messagePermissionMode ?? 'default',

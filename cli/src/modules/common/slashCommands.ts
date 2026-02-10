@@ -35,7 +35,7 @@ const BUILTIN_COMMANDS: Record<string, SlashCommand[]> = {
     codex: [
         { name: 'model', description: 'Set or show current model', source: 'builtin' },
         { name: 'skills', description: 'List available skills', source: 'builtin' },
-        { name: 'plan', description: 'Set or show plan mode', source: 'builtin' },
+        { name: 'plan', description: 'Switch to plan mode', source: 'builtin' },
         { name: 'status', description: 'Show codex session status', source: 'builtin' }
     ],
     gemini: [

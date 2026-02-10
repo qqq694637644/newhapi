@@ -134,11 +134,11 @@ export function SessionChat(props: {
 
                 if (hapiResponse.success && hapiResponse.status) {
                     const status = hapiResponse.status
-                    const planEnabled = status.collaborationMode === 'plan' ? 'ON' : 'OFF'
+                    const collaborationMode = status.collaborationMode ?? 'default'
                     hapiBlock =
                         `HAPI status:\n` +
                         `- Model: ${status.model ?? 'default'}\n` +
-                        `- Plan: ${planEnabled}\n` +
+                        `- Collaboration: ${collaborationMode}\n` +
                         `- Permission: ${status.permissionMode}\n` +
                         `- Pending requests: ${status.pendingRequests}\n` +
                         `- Active: ${status.active ? 'yes' : 'no'}`
@@ -167,6 +167,7 @@ export function SessionChat(props: {
                             `- Session: ${native.sessionId ?? 'unknown'}`,
                             `- Directory: ${native.directory ?? 'unknown'}`,
                             `- Model: ${native.model ?? native.config?.model ?? 'unknown'}`,
+                            `- Collaboration: ${native.collaborationMode ?? 'default'}`,
                             `- Approval: ${native.approvalPolicy ?? native.config?.approvalPolicy ?? 'unknown'}`,
                             `- Sandbox: ${native.sandbox ?? native.config?.sandboxMode ?? 'unknown'}`,
                             `- Account: ${accountLabel}`,
@@ -254,34 +255,41 @@ export function SessionChat(props: {
             }
 
             if (commandToken === 'plan') {
-                if (!args) {
-                    const response = await props.api.getCodexStatus(props.session.id)
-                    if (!response.success || !response.status) {
-                        throw new Error(response.error ?? 'Failed to fetch plan status')
-                    }
-                    const enabled = response.status.collaborationMode === 'plan'
-                    appendCommandMessage(`Plan mode: ${enabled ? 'ON' : 'OFF'}`)
-                    haptic.notification('success')
-                    return true
+                const fallbackPlanModel = 'gpt-5.2-codex'
+                let resolvedModel: string | undefined
+
+                const statusResponse = await props.api.getCodexStatus(props.session.id)
+                if (statusResponse.success && statusResponse.status?.model) {
+                    resolvedModel = statusResponse.status.model
                 }
 
-                const normalized = args.toLowerCase()
-                if (normalized !== 'on' && normalized !== 'off') {
-                    appendCommandMessage('Command failed: usage `/plan on|off`.')
-                    haptic.notification('error')
-                    return true
-                }
+                const targetModel = resolvedModel ?? fallbackPlanModel
 
                 const response = await props.api.setCodexConfig(
                     props.session.id,
-                    { collaborationMode: normalized === 'on' ? 'plan' : null }
+                    {
+                        collaborationMode: 'plan',
+                        model: targetModel
+                    }
                 )
                 if (!response.success || !response.config) {
-                    throw new Error(response.error ?? 'Failed to update plan mode')
+                    throw new Error(response.error ?? 'Failed to update collaboration mode')
                 }
 
-                const enabled = response.config.collaborationMode === 'plan'
-                appendCommandMessage(`Plan mode: ${enabled ? 'ON' : 'OFF'}`)
+                if (response.config.collaborationMode !== 'plan') {
+                    throw new Error(`Plan mode not applied (actual: ${response.config.collaborationMode ?? 'default'})`)
+                }
+
+                appendCommandMessage(
+                    resolvedModel
+                        ? 'Plan mode: ON'
+                        : `Plan mode: ON (model fallback: ${fallbackPlanModel})`
+                )
+
+                if (args) {
+                    props.onSend(args)
+                }
+
                 props.onRefresh()
                 haptic.notification('success')
                 return true
@@ -295,7 +303,7 @@ export function SessionChat(props: {
         }
 
         return false
-    }, [agentFlavor, appendCommandMessage, haptic, props.api, props.onRefresh, props.session.id])
+    }, [agentFlavor, appendCommandMessage, haptic, props.api, props.onRefresh, props.onSend, props.session.id])
 
     // Voice assistant integration
     const voice = useVoiceOptional()

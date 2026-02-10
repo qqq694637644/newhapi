@@ -1,7 +1,6 @@
 import type { EnhancedMode } from '../loop';
 import type { CodexCliOverrides } from './codexCliOverrides';
 import type { McpServersConfig } from './buildHapiMcpBridge';
-import { codexSystemPrompt } from './systemPrompt';
 import type {
     ApprovalPolicy,
     SandboxMode,
@@ -87,12 +86,11 @@ export function buildThreadStartParams(args: {
     const resolvedSandbox = cliOverrides?.sandbox ?? sandbox;
 
     const config = buildMcpServerConfig(args.mcpServers);
-    const baseInstructions = args.baseInstructions ?? codexSystemPrompt;
 
     const params: ThreadStartParams = {
         approvalPolicy: resolvedApprovalPolicy,
         sandbox: resolvedSandbox,
-        baseInstructions,
+        ...(args.baseInstructions ? { baseInstructions: args.baseInstructions } : {}),
         ...(args.developerInstructions ? { developerInstructions: args.developerInstructions } : {}),
         ...(Object.keys(config).length > 0 ? { config } : {})
     };
@@ -139,7 +137,13 @@ export function buildTurnStartParams(args: {
     const collaborationMode = args.mode?.collaborationMode;
     const model = args.overrides?.model ?? args.mode?.model;
     if (collaborationMode) {
-        const settings = model ? { model } : undefined;
+        const settings = model
+            ? {
+                model,
+                reasoning_effort: null,
+                developer_instructions: null
+            }
+            : undefined;
         params.collaborationMode = settings
             ? { mode: collaborationMode, settings }
             : { mode: collaborationMode };
