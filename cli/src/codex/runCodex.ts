@@ -11,6 +11,22 @@ import { createModeChangeHandler, createRunnerLifecycle, setControlledByUser } f
 import { isPermissionModeAllowedForFlavor } from '@hapi/protocol';
 import { PermissionModeSchema } from '@hapi/protocol/schemas';
 import { formatMessageWithAttachments } from '@/utils/attachmentFormatter';
+import { CodexAppServerClient } from './codexAppServerClient';
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+    if (!value || typeof value !== 'object') {
+        return null;
+    }
+    return value as Record<string, unknown>;
+}
+
+function asString(value: unknown): string | null {
+    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+}
+
+function asNumber(value: unknown): number | null {
+    return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
 
 export { emitReadyIfIdle } from './utils/emitReadyIfIdle';
 
@@ -128,6 +144,163 @@ export async function runCodex(opts: {
         return trimmed;
     };
 
+    const resolveEffectiveApprovalPolicy = (): 'untrusted' | 'on-failure' | 'on-request' | 'never' => {
+        if (currentPermissionMode === 'default' && codexCliOverrides?.approvalPolicy) {
+            return codexCliOverrides.approvalPolicy;
+        }
+
+        switch (currentPermissionMode) {
+            case 'default':
+                return 'untrusted';
+            case 'read-only':
+                return 'never';
+            case 'safe-yolo':
+                return 'on-failure';
+            case 'yolo':
+                return 'on-failure';
+        }
+    };
+
+    const resolveEffectiveSandbox = (): 'read-only' | 'workspace-write' | 'danger-full-access' => {
+        if (currentPermissionMode === 'default' && codexCliOverrides?.sandbox) {
+            return codexCliOverrides.sandbox;
+        }
+
+        switch (currentPermissionMode) {
+            case 'default':
+                return 'workspace-write';
+            case 'read-only':
+                return 'read-only';
+            case 'safe-yolo':
+                return 'workspace-write';
+            case 'yolo':
+                return 'danger-full-access';
+        }
+    };
+
+    const readNativeStatus = async (): Promise<{
+        available: boolean;
+        sessionId: string | null;
+        model: string | null;
+        collaborationMode: string | null;
+        permissionMode: PermissionMode;
+        approvalPolicy: 'untrusted' | 'on-failure' | 'on-request' | 'never';
+        sandbox: 'read-only' | 'workspace-write' | 'danger-full-access';
+        directory: string;
+        fetchedAt: number;
+        account: {
+            type: string | null;
+            email: string | null;
+            planType: string | null;
+            requiresOpenaiAuth: boolean | null;
+        } | null;
+        rateLimits: {
+            planType: string | null;
+            primary: { usedPercent: number | null; resetsAt: number | null; windowDurationMins: number | null } | null;
+            secondary: { usedPercent: number | null; resetsAt: number | null; windowDurationMins: number | null } | null;
+        } | null;
+        config: {
+            model: string | null;
+            approvalPolicy: string | null;
+            sandboxMode: string | null;
+            modelReasoningEffort: string | null;
+            modelReasoningSummary: string | null;
+        } | null;
+        error?: string;
+    }> => {
+        const base = {
+            available: false,
+            sessionId: sessionWrapperRef.current?.sessionId ?? null,
+            model: currentModel ?? null,
+            collaborationMode: currentCollaborationMode ?? null,
+            permissionMode: currentPermissionMode,
+            approvalPolicy: resolveEffectiveApprovalPolicy(),
+            sandbox: resolveEffectiveSandbox(),
+            directory: workingDirectory,
+            fetchedAt: Date.now(),
+            account: null,
+            rateLimits: null,
+            config: null
+        };
+
+        const parseWindow = (value: unknown): { usedPercent: number | null; resetsAt: number | null; windowDurationMins: number | null } | null => {
+            const record = asRecord(value);
+            if (!record) return null;
+            return {
+                usedPercent: asNumber(record.usedPercent),
+                resetsAt: asNumber(record.resetsAt),
+                windowDurationMins: asNumber(record.windowDurationMins)
+            };
+        };
+
+        const appServer = new CodexAppServerClient();
+        try {
+            await appServer.connect();
+            await appServer.initialize({
+                clientInfo: {
+                    name: 'hapi-codex-status',
+                    version: '1.0.0'
+                }
+            });
+
+            const [accountResult, rateLimitsResult, configResult] = await Promise.allSettled([
+                appServer.readAccount({ refreshToken: false }),
+                appServer.readAccountRateLimits(),
+                appServer.readConfig({ cwd: workingDirectory })
+            ]);
+
+            let account = null;
+            if (accountResult.status === 'fulfilled') {
+                const accountRecord = asRecord(accountResult.value.account);
+                const requiresOpenaiAuthRaw = (accountResult.value as Record<string, unknown>).requiresOpenaiAuth;
+                account = {
+                    type: asString(accountRecord?.type),
+                    email: asString(accountRecord?.email),
+                    planType: asString(accountRecord?.planType),
+                    requiresOpenaiAuth: typeof requiresOpenaiAuthRaw === 'boolean' ? requiresOpenaiAuthRaw : null
+                };
+            }
+
+            let rateLimits = null;
+            if (rateLimitsResult.status === 'fulfilled') {
+                const rateLimitsRecord = asRecord(rateLimitsResult.value.rateLimits);
+                rateLimits = {
+                    planType: asString(rateLimitsRecord?.planType),
+                    primary: parseWindow(rateLimitsRecord?.primary),
+                    secondary: parseWindow(rateLimitsRecord?.secondary)
+                };
+            }
+
+            let config = null;
+            if (configResult.status === 'fulfilled') {
+                const configRecord = asRecord(configResult.value.config);
+                config = {
+                    model: asString(configRecord?.model),
+                    approvalPolicy: asString(configRecord?.approval_policy),
+                    sandboxMode: asString(configRecord?.sandbox_mode),
+                    modelReasoningEffort: asString(configRecord?.model_reasoning_effort),
+                    modelReasoningSummary: asString(configRecord?.model_reasoning_summary)
+                };
+            }
+
+            return {
+                ...base,
+                available: true,
+                account,
+                rateLimits,
+                config
+            };
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            return {
+                ...base,
+                error: message
+            };
+        } finally {
+            await appServer.disconnect().catch(() => undefined);
+        }
+    };
+
     session.rpcHandlerManager.registerHandler('set-session-config', async (payload: unknown) => {
         if (!payload || typeof payload !== 'object') {
             throw new Error('Invalid session config payload');
@@ -162,6 +335,10 @@ export async function runCodex(opts: {
             collaborationMode: currentCollaborationMode ?? null,
             model: currentModel ?? null
         };
+    });
+
+    session.rpcHandlerManager.registerHandler('get-native-status', async () => {
+        return await readNativeStatus();
     });
 
     try {

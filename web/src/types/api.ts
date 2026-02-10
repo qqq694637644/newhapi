@@ -195,6 +195,49 @@ export type CodexStatusResponse = {
     error?: string
 }
 
+export type CodexNativeStatusResponse = {
+    success: boolean
+    nativeStatus?: {
+        available: boolean
+        sessionId: string | null
+        model: string | null
+        collaborationMode: string | null
+        permissionMode: string | null
+        approvalPolicy: string | null
+        sandbox: string | null
+        directory: string | null
+        fetchedAt: number | null
+        account: {
+            type: string | null
+            email: string | null
+            planType: string | null
+            requiresOpenaiAuth: boolean | null
+        } | null
+        rateLimits: {
+            planType: string | null
+            primary: {
+                usedPercent: number | null
+                resetsAt: number | null
+                windowDurationMins: number | null
+            } | null
+            secondary: {
+                usedPercent: number | null
+                resetsAt: number | null
+                windowDurationMins: number | null
+            } | null
+        } | null
+        config: {
+            model: string | null
+            approvalPolicy: string | null
+            sandboxMode: string | null
+            modelReasoningEffort: string | null
+            modelReasoningSummary: string | null
+        } | null
+        error?: string | null
+    }
+    error?: string
+}
+
 export type PushSubscriptionKeys = {
     p256dh: string
     auth: string

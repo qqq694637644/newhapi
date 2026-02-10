@@ -4,6 +4,11 @@ import { killProcessByChildProcess } from '@/utils/process';
 import type {
     InitializeParams,
     InitializeResponse,
+    ConfigReadParams,
+    ConfigReadResponse,
+    GetAccountParams,
+    GetAccountRateLimitsResponse,
+    GetAccountResponse,
     ThreadStartParams,
     ThreadStartResponse,
     ThreadResumeParams,
@@ -162,6 +167,27 @@ export class CodexAppServerClient {
             timeoutMs: 30_000
         });
         return response as TurnInterruptResponse;
+    }
+
+    async readAccount(params: GetAccountParams = {}): Promise<GetAccountResponse> {
+        const response = await this.sendRequest('account/read', params, {
+            timeoutMs: 30_000
+        });
+        return response as GetAccountResponse;
+    }
+
+    async readAccountRateLimits(): Promise<GetAccountRateLimitsResponse> {
+        const response = await this.sendRequest('account/rateLimits/read', null, {
+            timeoutMs: 30_000
+        });
+        return response as GetAccountRateLimitsResponse;
+    }
+
+    async readConfig(params: ConfigReadParams = {}): Promise<ConfigReadResponse> {
+        const response = await this.sendRequest('config/read', params, {
+            timeoutMs: 30_000
+        });
+        return response as ConfigReadResponse;
     }
 
     async disconnect(): Promise<void> {

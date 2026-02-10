@@ -105,6 +105,10 @@ export class RpcGateway {
         return await this.sessionRpc(sessionId, 'get-session-config', {})
     }
 
+    async getNativeStatus(sessionId: string): Promise<unknown> {
+        return await this.sessionRpc(sessionId, 'get-native-status', {})
+    }
+
     async killSession(sessionId: string): Promise<void> {
         await this.sessionRpc(sessionId, 'killSession', {})
     }

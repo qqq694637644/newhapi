@@ -47,6 +47,11 @@ bun install
 bun run build:single-exe
 ```
 
+## Attribution
+
+- Original upstream project: https://github.com/tiann/hapi
+- This repository includes substantial Codex-focused adaptations and integrations, including command compatibility, remote status/config handling, and related workflow improvements.
+
 ## Credits
 
 HAPI means "哈皮" a Chinese transliteration of [Happy](https://github.com/slopus/happy). Great credit to the original project.

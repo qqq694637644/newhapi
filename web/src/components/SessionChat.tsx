@@ -70,6 +70,31 @@ export function SessionChat(props: {
         setForceScrollToken((token) => token + 1)
     }, [props.session.id])
 
+    const formatResetTime = (timestamp: number | null | undefined): string | null => {
+        if (typeof timestamp !== 'number' || !Number.isFinite(timestamp) || timestamp <= 0) {
+            return null
+        }
+        const millis = timestamp > 1_000_000_000_000 ? timestamp : timestamp * 1000
+        const date = new Date(millis)
+        if (Number.isNaN(date.getTime())) {
+            return null
+        }
+        return date.toLocaleString()
+    }
+
+    const formatRateWindowLabel = (windowDurationMins: number | null | undefined, fallback: string): string => {
+        if (typeof windowDurationMins !== 'number' || !Number.isFinite(windowDurationMins) || windowDurationMins <= 0) {
+            return fallback
+        }
+        if (windowDurationMins === 300) {
+            return '5h limit'
+        }
+        if (windowDurationMins === 10_080) {
+            return 'Weekly limit'
+        }
+        return `${windowDurationMins}m limit`
+    }
+
     const runCodexCommand = useCallback(async (text: string, attachments?: AttachmentMetadata[]): Promise<boolean> => {
         if (agentFlavor !== 'codex') {
             return false
@@ -91,35 +116,91 @@ export function SessionChat(props: {
         }
 
         if (commandToken === 'status') {
-            try {
-                const response = await props.api.getCodexStatus(props.session.id)
-                if (!response.success || !response.status) {
-                    throw new Error(response.error ?? 'Failed to fetch status')
-                }
-                const status = response.status
-                const planEnabled = status.collaborationMode === 'plan' ? 'ON' : 'OFF'
-                appendCommandMessage(
-                    `HAPI status:\n` +
-                    `- Model: ${status.model ?? 'default'}\n` +
-                    `- Plan: ${planEnabled}\n` +
-                    `- Permission: ${status.permissionMode}\n` +
-                    `- Pending requests: ${status.pendingRequests}\n` +
-                    `- Active: ${status.active ? 'yes' : 'no'}\n\n` +
-                    `Forwarding \`/status\` to Codex for native status output...`
-                )
-                props.onRefresh()
-                haptic.notification('success')
-            } catch (error) {
-                const message = error instanceof Error ? error.message : 'Failed to fetch HAPI status'
-                appendCommandMessage(
-                    `HAPI status fetch failed: ${message}\n` +
-                    `Forwarding \`/status\` to Codex for native status output...`
-                )
+            if (attachments && attachments.length > 0) {
+                appendCommandMessage('Command failed: slash commands do not support attachments.')
                 haptic.notification('error')
+                return true
             }
 
-            // Let Codex handle native /status in addition to HAPI status.
-            return false
+            let hapiBlock = 'HAPI status: unavailable'
+            let nativeBlock = 'Codex native status: unavailable'
+            let success = false
+
+            try {
+                const [hapiResponse, nativeResponse] = await Promise.all([
+                    props.api.getCodexStatus(props.session.id),
+                    props.api.getCodexNativeStatus(props.session.id)
+                ])
+
+                if (hapiResponse.success && hapiResponse.status) {
+                    const status = hapiResponse.status
+                    const planEnabled = status.collaborationMode === 'plan' ? 'ON' : 'OFF'
+                    hapiBlock =
+                        `HAPI status:\n` +
+                        `- Model: ${status.model ?? 'default'}\n` +
+                        `- Plan: ${planEnabled}\n` +
+                        `- Permission: ${status.permissionMode}\n` +
+                        `- Pending requests: ${status.pendingRequests}\n` +
+                        `- Active: ${status.active ? 'yes' : 'no'}`
+                    success = true
+                } else {
+                    hapiBlock = `HAPI status failed: ${hapiResponse.error ?? 'unknown error'}`
+                }
+
+                if (nativeResponse.success && nativeResponse.nativeStatus) {
+                    const native = nativeResponse.nativeStatus
+                    if (!native.available) {
+                        nativeBlock = `Codex native status unavailable: ${native.error ?? 'no data'}`
+                    } else {
+                        const account = native.account
+                        const accountLabel = account
+                            ? account.type === 'chatgpt'
+                                ? `${account.email ?? 'unknown'}${account.planType ? ` (${account.planType})` : ''}`
+                                : 'API key'
+                            : 'unknown'
+
+                        const primary = native.rateLimits?.primary
+                        const secondary = native.rateLimits?.secondary
+
+                        const nativeLines: string[] = [
+                            'Codex native status:',
+                            `- Session: ${native.sessionId ?? 'unknown'}`,
+                            `- Directory: ${native.directory ?? 'unknown'}`,
+                            `- Model: ${native.model ?? native.config?.model ?? 'unknown'}`,
+                            `- Approval: ${native.approvalPolicy ?? native.config?.approvalPolicy ?? 'unknown'}`,
+                            `- Sandbox: ${native.sandbox ?? native.config?.sandboxMode ?? 'unknown'}`,
+                            `- Account: ${accountLabel}`,
+                        ]
+
+                        if (primary && typeof primary.usedPercent === 'number') {
+                            const left = Math.max(0, 100 - primary.usedPercent)
+                            const resetAt = formatResetTime(primary.resetsAt)
+                            const label = formatRateWindowLabel(primary.windowDurationMins, 'Primary limit')
+                            nativeLines.push(`- ${label}: ${left}% left${resetAt ? ` (resets ${resetAt})` : ''}`)
+                        }
+
+                        if (secondary && typeof secondary.usedPercent === 'number') {
+                            const left = Math.max(0, 100 - secondary.usedPercent)
+                            const resetAt = formatResetTime(secondary.resetsAt)
+                            const label = formatRateWindowLabel(secondary.windowDurationMins, 'Secondary limit')
+                            nativeLines.push(`- ${label}: ${left}% left${resetAt ? ` (resets ${resetAt})` : ''}`)
+                        }
+
+                        nativeBlock = nativeLines.join('\n')
+                        success = true
+                    }
+                } else {
+                    nativeBlock = `Codex native status failed: ${nativeResponse.error ?? 'unknown error'}`
+                }
+            } catch (error) {
+                const message = error instanceof Error ? error.message : 'Failed to fetch status'
+                nativeBlock = `Codex native status failed: ${message}`
+            }
+
+            appendCommandMessage(`${hapiBlock}\n\n${nativeBlock}`)
+            props.onRefresh()
+            haptic.notification(success ? 'success' : 'error')
+            return true
         }
 
         const recognized = commandToken === 'model'

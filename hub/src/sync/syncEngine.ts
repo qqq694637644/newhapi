@@ -303,6 +303,10 @@ export class SyncEngine {
         return await this.rpcGateway.getSessionConfig(sessionId)
     }
 
+    async getCodexNativeStatus(sessionId: string): Promise<unknown> {
+        return await this.rpcGateway.getNativeStatus(sessionId)
+    }
+
     async spawnSession(
         machineId: string,
         directory: string,

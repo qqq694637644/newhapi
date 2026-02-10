@@ -55,6 +55,14 @@ function asString(value: unknown): string | null {
     return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
 }
 
+function asNumber(value: unknown): number | null {
+    return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+function asBoolean(value: unknown): boolean | null {
+    return typeof value === 'boolean' ? value : null
+}
+
 export function createSessionsRoutes(getSyncEngine: () => SyncEngine | null): Hono<WebAppEnv> {
     const app = new Hono<WebAppEnv>()
 
@@ -411,6 +419,89 @@ export function createSessionsRoutes(getSyncEngine: () => SyncEngine | null): Ho
             })
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Failed to get codex status'
+            return c.json({ success: false, error: message }, 409)
+        }
+    })
+
+    app.get('/sessions/:id/codex-native-status', async (c) => {
+        const engine = requireSyncEngine(c, getSyncEngine)
+        if (engine instanceof Response) {
+            return engine
+        }
+
+        const sessionResult = requireSessionFromParam(c, engine)
+        if (sessionResult instanceof Response) {
+            return sessionResult
+        }
+
+        const flavor = sessionResult.session.metadata?.flavor ?? 'claude'
+        if (flavor !== 'codex') {
+            return c.json({ success: false, error: 'Codex native status is only supported for Codex sessions' }, 400)
+        }
+
+        if (!sessionResult.session.active) {
+            return c.json({
+                success: true,
+                nativeStatus: {
+                    available: false,
+                    error: 'Session is inactive'
+                }
+            })
+        }
+
+        try {
+            const raw = await engine.getCodexNativeStatus(sessionResult.sessionId)
+            const record = asRecord(raw)
+
+            const accountRecord = asRecord(record?.account)
+            const rateLimitsRecord = asRecord(record?.rateLimits)
+            const primaryRecord = asRecord(rateLimitsRecord?.primary)
+            const secondaryRecord = asRecord(rateLimitsRecord?.secondary)
+            const configRecord = asRecord(record?.config)
+
+            return c.json({
+                success: true,
+                nativeStatus: {
+                    available: asBoolean(record?.available) ?? false,
+                    sessionId: asString(record?.sessionId),
+                    model: asString(record?.model),
+                    collaborationMode: asString(record?.collaborationMode),
+                    permissionMode: asString(record?.permissionMode),
+                    approvalPolicy: asString(record?.approvalPolicy),
+                    sandbox: asString(record?.sandbox),
+                    directory: asString(record?.directory),
+                    fetchedAt: asNumber(record?.fetchedAt),
+                    account: accountRecord ? {
+                        type: asString(accountRecord.type),
+                        email: asString(accountRecord.email),
+                        planType: asString(accountRecord.planType),
+                        requiresOpenaiAuth: asBoolean(accountRecord.requiresOpenaiAuth)
+                    } : null,
+                    rateLimits: rateLimitsRecord ? {
+                        planType: asString(rateLimitsRecord.planType),
+                        primary: primaryRecord ? {
+                            usedPercent: asNumber(primaryRecord.usedPercent),
+                            resetsAt: asNumber(primaryRecord.resetsAt),
+                            windowDurationMins: asNumber(primaryRecord.windowDurationMins)
+                        } : null,
+                        secondary: secondaryRecord ? {
+                            usedPercent: asNumber(secondaryRecord.usedPercent),
+                            resetsAt: asNumber(secondaryRecord.resetsAt),
+                            windowDurationMins: asNumber(secondaryRecord.windowDurationMins)
+                        } : null
+                    } : null,
+                    config: configRecord ? {
+                        model: asString(configRecord.model),
+                        approvalPolicy: asString(configRecord.approvalPolicy),
+                        sandboxMode: asString(configRecord.sandboxMode),
+                        modelReasoningEffort: asString(configRecord.modelReasoningEffort),
+                        modelReasoningSummary: asString(configRecord.modelReasoningSummary)
+                    } : null,
+                    error: asString(record?.error)
+                }
+            })
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to get codex native status'
             return c.json({ success: false, error: message }, 409)
         }
     })

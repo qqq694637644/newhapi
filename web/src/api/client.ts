@@ -3,6 +3,7 @@ import type {
     AuthResponse,
     DeleteUploadResponse,
     CodexConfigResponse,
+    CodexNativeStatusResponse,
     CodexStatusResponse,
     ListDirectoryResponse,
     FileReadResponse,
@@ -338,6 +339,12 @@ export class ApiClient {
     async getCodexStatus(sessionId: string): Promise<CodexStatusResponse> {
         return await this.request<CodexStatusResponse>(
             `/api/sessions/${encodeURIComponent(sessionId)}/codex-status`
+        )
+    }
+
+    async getCodexNativeStatus(sessionId: string): Promise<CodexNativeStatusResponse> {
+        return await this.request<CodexNativeStatusResponse>(
+            `/api/sessions/${encodeURIComponent(sessionId)}/codex-native-status`
         )
     }
 

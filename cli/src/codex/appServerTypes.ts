@@ -133,3 +133,30 @@ export interface TurnInterruptResponse {
     ok: boolean;
     [key: string]: unknown;
 }
+
+export interface GetAccountParams {
+    refreshToken?: boolean;
+}
+
+export interface GetAccountResponse {
+    account?: unknown;
+    requiresOpenaiAuth: boolean;
+    [key: string]: unknown;
+}
+
+export interface GetAccountRateLimitsResponse {
+    rateLimits: unknown;
+    [key: string]: unknown;
+}
+
+export interface ConfigReadParams {
+    cwd?: string | null;
+    includeLayers?: boolean;
+}
+
+export interface ConfigReadResponse {
+    config: unknown;
+    origins: unknown;
+    layers?: unknown[] | null;
+    [key: string]: unknown;
+}
